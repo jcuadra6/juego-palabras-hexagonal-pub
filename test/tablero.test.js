@@ -54,15 +54,33 @@ test('hayPalabraPosible', () => {
   assert.equal(hayPalabraPosible(t, lem('ala')), false);
 });
 
-test('hayPalabraPosible: rapido en tablero grande', () => {
+test('hayPalabraPosible: poda eficaz en tablero grande', () => {
+  const rng = crearRng(42);
   const lista = [];
-  for (let r = 0; r <= 4; r++) for (let q = 0; q <= 4; q++) lista.push({ q, r, letra: 'a' });
+  for (const c of [{ q: 0, r: 0 }, ...[1, 2, 3, 4, 5].flatMap((n) => anillo(n))]) {
+    lista.push({ q: c.q, r: c.r, letra: rng() < 0.5 ? 'a' : 'b' });
+  }
+  assert.equal(lista.length, 91);
   const t = tableroDesde(lista);
-  const palabras = [];
-  for (let i = 0; i < 450; i++) palabras.push('b' + 'xyz'[i % 3] + String(i).replace(/\d/g, (d) => 'cdefghijkl'[d]));
-  const t0 = Date.now();
-  assert.equal(hayPalabraPosible(t, cargarLemario(palabras.join('\n'))), false);
-  assert.ok(Date.now() - t0 < 1000);
+  // Palabras largas de a/b con prefijos alcanzables, pero acabadas en 'c' (inexistente).
+  const palabras = new Set();
+  const r2 = crearRng(7);
+  while (palabras.size < 450) {
+    const n = 10 + Math.floor(r2() * 5);
+    let p = '';
+    for (let i = 0; i < n; i++) p += r2() < 0.5 ? 'a' : 'b';
+    palabras.add(p + 'c');
+  }
+  const lemNo = cargarLemario([...palabras].join('\n'));
+  let t0 = Date.now();
+  assert.equal(hayPalabraPosible(t, lemNo), false);
+  assert.ok(Date.now() - t0 < 2000, 'demasiado lento');
+  const todasA = tableroDesde(lista.map((c) => ({ ...c, letra: 'a' })));
+  const lemA = cargarLemario([...palabras, 'a'.repeat(12)].join('\n'));
+  t0 = Date.now();
+  assert.equal(hayPalabraPosible(todasA, lemA), true);
+  assert.equal(hayPalabraPosible(todasA, lemNo), false);
+  assert.ok(Date.now() - t0 < 2000, 'demasiado lento');
 });
 
 test('garantizarPalabraPosible', () => {
@@ -75,6 +93,17 @@ test('garantizarPalabraPosible', () => {
   const t2 = tableroDesde([{ q: 0, r: 0, letra: 'x' }, { q: 1, r: 0, letra: 'x' }]);
   assert.equal(garantizarPalabraPosible(t2, l, crearRng(1)), false);
   assert.equal(garantizarPalabraPosible(t, lem('alma'), crearRng(1)), false); // sin palabras de 3 letras
+});
+
+test('garantizarPalabraPosible: ignora casillas congeladas', () => {
+  const t = tableroDesde([
+    { q: 0, r: 0, letra: 'x' }, { q: 1, r: 0, letra: 'x' }, { q: 0, r: 1, letra: 'x' },
+  ]);
+  t.casilla(1, 0).congeladaHasta = 5;
+  const l = lem('sol');
+  assert.equal(garantizarPalabraPosible(t, l, crearRng(1)), false);
+  assert.equal(hayPalabraPosible(t, l), false);
+  assert.equal(t.casilla(0, 0).letra, 'x');
 });
 
 test('crearTableroInicial', () => {

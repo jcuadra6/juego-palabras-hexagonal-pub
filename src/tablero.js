@@ -90,14 +90,16 @@ export function garantizarPalabraPosible(tablero, lemario, rng) {
   if (hayPalabraPosible(tablero, lemario)) return true;
   const palabra = lemario.palabraAleatoria(rng, 3);
   if (!palabra) return false;
+  const libre = (c) => c && c.congeladaHasta <= tablero.turno;
   const cadenas = [];
   for (const a of tablero.casillas.values()) {
+    if (!libre(a)) continue;
     for (const vb of vecinos(a.q, a.r)) {
       const b = tablero.casilla(vb.q, vb.r);
-      if (!b) continue;
+      if (!libre(b)) continue;
       for (const vc of vecinos(b.q, b.r)) {
         const c = tablero.casilla(vc.q, vc.r);
-        if (!c || c === a) continue;
+        if (!libre(c) || c === a) continue;
         cadenas.push([a, b, c]);
       }
     }
