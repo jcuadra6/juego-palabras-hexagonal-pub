@@ -185,3 +185,50 @@ test('evento con duración: se guarda, rige el modo y caduca', async () => {
   assert.equal(p.eventosActivos.length, 0);
   assert.equal(modoActivo(p.eventosActivos, p.tablero.turno), 'rellenar');
 });
+
+const iaRota = {
+  validarPalabra: (w) => ia.validarPalabra(w),
+  siguienteEvento: async () => { throw new Error('IA caída'); },
+};
+
+test('siguienteEvento que falla no deja la jugada a medias (misiones)', async () => {
+  const p = nueva({
+    modo: 'misiones', tema: tema([{ tipo: 'longitud', meta: 3 }]), ia: iaRota, eventoCada: 1,
+  });
+  const res = await jugarPalabra(p, CAM3);
+  assert.equal(res.aceptada, true);
+  assert.equal(res.eventoError, true);
+  assert.equal(res.evento, undefined);
+  assert.equal(p.puntos, 9);
+  assert.equal(p.tablero.turno, 1);
+  assert.equal(p.estado, 'victoria');
+  escribir(p, CAM3, 'sol');
+  assert.equal((await jugarPalabra(p, CAM3)).motivo, 'partida-terminada');
+});
+
+test('siguienteEvento que falla: el final se evalúa tras una marca eliminar (supervivencia)', async () => {
+  const p = nueva({ ia: iaRota, eventoCada: 1 });
+  p.tablero.casilla(0, 0).especial = { tipo: 'eliminar' };
+  // Deja solo las casillas del camino y su entorno inmediato para que la marca vacíe el tablero.
+  for (const k of ['-1,0', '0,-1', '1,-1', '-1,1']) {
+    p.tablero.casillas.delete(k);
+    p.tablero.huecos.add(k);
+  }
+  const res = await jugarPalabra(p, CAM3);
+  assert.equal(res.aceptada, true);
+  assert.equal(res.eventoError, true);
+  assert.equal(p.puntos, 9);
+  assert.equal(p.tablero.turno, 1);
+  assert.equal(p.estado, 'derrota');
+  assert.equal(p.tablero.casillas.size, 0);
+  assert.equal(p.palabrasUsadas.size, 1);
+});
+
+test('siguienteEvento que falla: repetir la palabra se rechaza como repetida', async () => {
+  const p = nueva({ ia: iaRota, eventoCada: 1 });
+  await jugarPalabra(p, CAM3);
+  escribir(p, CAM3, 'sol');
+  assert.deepEqual(await jugarPalabra(p, CAM3), { aceptada: false, motivo: 'repetida' });
+  assert.equal(p.puntos, 9);
+  assert.equal(p.tablero.turno, 1);
+});

@@ -92,12 +92,19 @@ export async function jugarPalabra(partida, camino) {
 
   for (const m of marcas.eliminar) registrarEvento(partida, eventoDeMarca(m));
   let evento;
+  let eventoError = false;
   if (partida.eventoCada > 0 && partida.palabrasUsadas.size % partida.eventoCada === 0) {
-    evento = await partida.ia.siguienteEvento(
-      { tablero, puntos: partida.puntos, palabrasUsadas: partida.palabrasUsadas },
-      partida.modo, partida.tema,
-    );
-    if (evento) registrarEvento(partida, evento);
+    try {
+      evento = await partida.ia.siguienteEvento(
+        { tablero, puntos: partida.puntos, palabrasUsadas: partida.palabrasUsadas },
+        partida.modo, partida.tema,
+      );
+      if (evento) registrarEvento(partida, evento);
+    } catch {
+      // Un fallo de la IA equivale a "sin evento": la jugada ya está confirmada.
+      evento = undefined;
+      eventoError = true;
+    }
   }
 
   if (partida.modo === 'misiones') {
@@ -114,5 +121,6 @@ export async function jugarPalabra(partida, camino) {
 
   const res = { aceptada: true, palabra, puntos, anadidas };
   if (evento) res.evento = evento;
+  if (eventoError) res.eventoError = true;
   return res;
 }
