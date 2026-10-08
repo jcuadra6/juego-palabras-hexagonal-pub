@@ -459,3 +459,7 @@ subir
 bajar
 abrir
 cerrar
+murcielago
+belen
+turron
+navidad
