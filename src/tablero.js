@@ -55,10 +55,11 @@ export function palabraDeCamino(tablero, camino) {
   return camino.map((p) => tablero.casilla(p.q, p.r).letra).join('');
 }
 
-export function hayPalabraPosible(tablero, lemario) {
+// Por defecto solo cuentan las casillas libres; con incluirCongeladas también las congeladas.
+export function hayPalabraPosible(tablero, lemario, { incluirCongeladas = false } = {}) {
   const maxLong = lemario.palabras.reduce((m, p) => Math.max(m, p.length), 0);
   if (maxLong < LONGITUD_MINIMA) return false;
-  const libres = [...tablero.casillas.values()].filter((c) => c.congeladaHasta <= tablero.turno);
+  const libres = [...tablero.casillas.values()].filter((c) => incluirCongeladas || c.congeladaHasta <= tablero.turno);
   const libreKeys = new Set(libres.map((c) => clave(c.q, c.r)));
   const vecinosDe = new Map();
   for (const c of libres) {
@@ -86,27 +87,41 @@ export function hayPalabraPosible(tablero, lemario) {
   return libres.some((c) => dfs(c, ''));
 }
 
-export function garantizarPalabraPosible(tablero, lemario, rng) {
-  if (hayPalabraPosible(tablero, lemario)) return true;
-  const palabra = lemario.palabraAleatoria(rng, 3);
-  if (!palabra) return false;
-  const libre = (c) => c && c.congeladaHasta <= tablero.turno;
-  const cadenas = [];
-  for (const a of tablero.casillas.values()) {
-    if (!libre(a)) continue;
-    for (const vb of vecinos(a.q, a.r)) {
-      const b = tablero.casilla(vb.q, vb.r);
-      if (!libre(b)) continue;
-      for (const vc of vecinos(b.q, b.r)) {
-        const c = tablero.casilla(vc.q, vc.r);
-        if (!libre(c) || c === a) continue;
-        cadenas.push([a, b, c]);
+const MAX_CAMINOS = 5000;
+
+// Caminos de n casillas libres distintas (cada una vecina de la anterior), en orden estable.
+function caminosLibres(tablero, n, libre) {
+  const caminos = [];
+  const actual = [];
+  function extender(c) {
+    if (caminos.length >= MAX_CAMINOS) return;
+    actual.push(c);
+    if (actual.length === n) {
+      caminos.push([...actual]);
+    } else {
+      for (const v of vecinos(c.q, c.r)) {
+        const sig = tablero.casilla(v.q, v.r);
+        if (libre(sig) && !actual.includes(sig)) extender(sig);
       }
     }
+    actual.pop();
   }
+  for (const a of tablero.casillas.values()) if (libre(a)) extender(a);
+  return caminos;
+}
+
+export function garantizarPalabraPosible(tablero, lemario, rng) {
+  if (hayPalabraPosible(tablero, lemario)) return true;
+  // Longitud más corta disponible (3 si existe; si no, la menor del lemario).
+  const longitud = lemario.palabras.reduce((m, p) => Math.min(m, p.length), Infinity);
+  if (!Number.isFinite(longitud)) return false;
+  const palabra = lemario.palabraAleatoria(rng, Math.max(LONGITUD_MINIMA, longitud));
+  if (!palabra) return false;
+  const libre = (c) => c && c.congeladaHasta <= tablero.turno;
+  const cadenas = caminosLibres(tablero, palabra.length, libre);
   if (cadenas.length === 0) return false;
-  const [a, b, c] = cadenas[Math.floor(rng() * cadenas.length)];
-  [a, b, c].forEach((casilla, i) => { casilla.letra = palabra[i]; });
+  const cadena = cadenas[Math.floor(rng() * cadenas.length)];
+  cadena.forEach((casilla, i) => { casilla.letra = palabra[i]; });
   return true;
 }
 

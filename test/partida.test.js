@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { tableroDesde } from '../src/tablero.js';
 import { cargarLemario } from '../src/lemario.js';
 import { crearIaSimulada } from '../src/ia.js';
-import { modoActivo } from '../src/eventos.js';
+import { modoActivo, EVENTOS_BASE } from '../src/eventos.js';
+import { cargarTema } from '../src/modos.js';
+import { readFileSync } from 'node:fs';
 import { crearPartida, jugarPalabra } from '../src/partida.js';
 
 const base = cargarLemario('casa\nsol\nsal\nmal\nluz\nzzz\n');
@@ -231,4 +233,96 @@ test('siguienteEvento que falla: repetir la palabra se rechaza como repetida', a
   assert.deepEqual(await jugarPalabra(p, CAM3), { aceptada: false, motivo: 'repetida' });
   assert.equal(p.puntos, 9);
   assert.equal(p.tablero.turno, 1);
+});
+
+// Congela todo el tablero (centro 0,0 radio 5) durante 2 turnos.
+const congelaTodo = { tipo: 'congelar', alcance: { radio: 5, centro: { q: 0, r: 0 } }, duracion: 2, modoCrecimiento: null };
+
+test('supervivencia: congelar todo el tablero no es derrota y el tablero vuelve a ser jugable', async () => {
+  const p = nueva({ ia: iaFija(congelaTodo), eventoCada: 1 });
+  const res = await jugarPalabra(p, CAM3);
+  assert.equal(res.aceptada, true);
+  assert.equal(p.estado, 'jugando');
+  assert.ok(p.tablero.casillas.size > 0);
+  for (const c of p.tablero.casillas.values()) assert.ok(c.congeladaHasta <= p.tablero.turno);
+  p.ia = iaFija(null);
+  escribir(p, CAM3, 'sal');
+  const otra = await jugarPalabra(p, CAM3);
+  assert.equal(otra.aceptada, true);
+});
+
+test('supervivencia: sin ninguna palabra posible (ni congeladas) sigue siendo derrota', async () => {
+  const p = nueva({ ia: iaFija(null), eventoCada: 1 });
+  // Tras la jugada todas las letras serán 'z' y 'zzz' se usa; se vacía el lemario efectivo.
+  p.lemario = cargarLemario('sol\n');
+  const ventana = [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }];
+  escribir(p, ventana, 'sol');
+  for (const k of ['-1,1', '-1,0', '0,-1', '1,-1']) p.tablero.casillas.delete(k);
+  p.lemario.letraAleatoria = () => 'z';
+  p.lemario.palabraAleatoria = () => null; // no se puede garantizar una palabra
+  const res = await jugarPalabra(p, ventana);
+  assert.equal(res.aceptada, true);
+  assert.equal(p.estado, 'derrota');
+});
+
+test('misiones: reinicio por falta de palabras marca tableroReiniciado', async () => {
+  const p = nueva({
+    modo: 'misiones', tema: tema([{ tipo: 'longitud', meta: 99 }]), ia: iaFija(elimina5), eventoCada: 1,
+  });
+  const res = await jugarPalabra(p, CAM3);
+  assert.equal(res.tableroReiniciado, true);
+  const q = nueva({ modo: 'misiones', tema: tema([{ tipo: 'longitud', meta: 99 }]) });
+  assert.equal((await jugarPalabra(q, CAM3)).tableroReiniciado, undefined);
+});
+
+test('misiones: un tablero congelado entero no se reinicia', async () => {
+  const p = nueva({
+    modo: 'misiones', tema: tema([{ tipo: 'longitud', meta: 99 }]), ia: iaFija(congelaTodo), eventoCada: 1,
+  });
+  const res = await jugarPalabra(p, CAM3);
+  assert.equal(res.tableroReiniciado, undefined);
+  assert.equal(p.tablero.casillas.size, 8);
+});
+
+test('evento de duración 0 con modoCrecimiento impone el modo al siguiente crecimiento', async () => {
+  const eliminarFuera = EVENTOS_BASE[5];
+  assert.equal(eliminarFuera.duracion, 0);
+  assert.equal(eliminarFuera.modoCrecimiento, 'fuera');
+  const halloween = cargarTema(JSON.parse(readFileSync(new URL('../data/temas/halloween.json', import.meta.url), 'utf8')));
+  const deTema = halloween.eventos.find((e) => e.tipo === 'eliminar' && e.duracion === 0 && e.modoCrecimiento === 'fuera');
+  assert.ok(deTema);
+  for (const plantilla of [eliminarFuera, deTema]) {
+    const evento = { ...plantilla, alcance: { radio: 0, centro: { q: -1, r: 0 } } };
+    let n = 0;
+    const p = nueva({
+      eventoCada: 1,
+      ia: { validarPalabra: (w) => ia.validarPalabra(w), siguienteEvento: async () => (n++ === 0 ? evento : null) },
+    });
+    await jugarPalabra(p, CAM3);
+    assert.ok(p.tablero.huecos.has('-1,0'));
+    assert.equal(modoActivo(p.eventosActivos, p.tablero.turno), 'fuera');
+    escribir(p, CAM3, 'sal');
+    await jugarPalabra(p, CAM3);
+    assert.ok(p.tablero.huecos.has('-1,0'), 'el hueco se conserva: crecimiento hacia fuera');
+    assert.equal(modoActivo(p.eventosActivos, p.tablero.turno), 'rellenar');
+  }
+});
+
+test('jugarPalabra no es reentrante: la segunda llamada concurrente se rechaza', async () => {
+  const p = nueva();
+  const a = jugarPalabra(p, CAM3);
+  const b = await jugarPalabra(p, CAM3);
+  assert.deepEqual(b, { aceptada: false, motivo: 'ocupada' });
+  const ra = await a;
+  assert.equal(ra.aceptada, true);
+  assert.equal(p.puntos, 9);
+  assert.equal(p.tablero.turno, 1);
+  escribir(p, CAM3, 'sal');
+  assert.equal((await jugarPalabra(p, CAM3)).aceptada, true); // la bandera se libera
+});
+
+test('crearPartida: un tablero inicial sin palabra posible no queda en jugando', () => {
+  const l = cargarLemario('ab\n'); // ninguna palabra válida
+  const p = crearPartida({ modo: 'supervivencia', lemario: l, ia, rng });
+  assert.equal(p.estado, 'derrota');
 });

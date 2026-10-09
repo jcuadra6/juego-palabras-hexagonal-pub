@@ -9,6 +9,18 @@ import { normalizar } from './lemario.js';
 import { clave } from './hex.js';
 import { EVENTO_CADA_PALABRAS } from './config.js';
 
+// ¿Se acabó el tablero? Solo si no hay palabra ni contando casillas congeladas (spec §3.5).
+// Si solo hay palabra con congeladas, se descongela todo para no dejar al jugador bloqueado:
+// el turno solo avanza con palabras aceptadas, así que la congelación no caducaría sola.
+function sinJugadas(partida) {
+  const { tablero, lemario } = partida;
+  if (tablero.casillas.size === 0) return true;
+  if (hayPalabraPosible(tablero, lemario)) return false;
+  if (!hayPalabraPosible(tablero, lemario, { incluirCongeladas: true })) return true;
+  for (const c of tablero.casillas.values()) c.congeladaHasta = 0;
+  return false;
+}
+
 export function crearPartida({
   modo, tema = null, lemario, ia, rng, eventoCada = EVENTO_CADA_PALABRAS,
 }) {
@@ -26,6 +38,7 @@ export function crearPartida({
     estado: 'jugando',
   };
   if (modo === 'misiones') partida.mision = crearMision(tema);
+  if (sinJugadas(partida)) partida.estado = 'derrota';
   return partida;
 }
 
@@ -49,8 +62,10 @@ function leerMarcas(tablero, camino) {
 
 function registrarEvento(partida, evento) {
   aplicarEvento(partida.tablero, evento);
-  if (evento.duracion > 0) {
-    partida.eventosActivos.push({ evento, hastaTurno: partida.tablero.turno + evento.duracion });
+  // Un evento instantáneo con modo de crecimiento rige el siguiente crecimiento (1 turno).
+  const duracion = evento.duracion > 0 ? evento.duracion : (evento.modoCrecimiento ? 1 : 0);
+  if (duracion > 0) {
+    partida.eventosActivos.push({ evento, hastaTurno: partida.tablero.turno + duracion });
   }
 }
 
@@ -63,6 +78,16 @@ function reiniciarTablero(partida) {
 
 export async function jugarPalabra(partida, camino) {
   if (partida.estado !== 'jugando') return { aceptada: false, motivo: 'partida-terminada' };
+  if (partida.enCurso) return { aceptada: false, motivo: 'ocupada' };
+  partida.enCurso = true;
+  try {
+    return await jugar(partida, camino);
+  } finally {
+    partida.enCurso = false;
+  }
+}
+
+async function jugar(partida, camino) {
   const { tablero, lemario, rng } = partida;
 
   const valido = caminoValido(tablero, camino);
@@ -107,19 +132,22 @@ export async function jugarPalabra(partida, camino) {
     }
   }
 
+  let tableroReiniciado = false;
   if (partida.modo === 'misiones') {
     actualizarMision(
       partida.mision, { palabra, casillasRegeneradas: rellenadas }, partida.tema,
     );
     if (misionCumplida(partida.mision)) partida.estado = 'victoria';
-    else if (partida.tablero.casillas.size === 0 || !hayPalabraPosible(partida.tablero, lemario)) {
+    else if (sinJugadas(partida)) {
       reiniciarTablero(partida);
+      tableroReiniciado = true;
     }
-  } else if (tablero.casillas.size === 0 || !hayPalabraPosible(tablero, lemario)) {
+  } else if (sinJugadas(partida)) {
     partida.estado = 'derrota';
   }
 
   const res = { aceptada: true, palabra, puntos, anadidas };
+  if (tableroReiniciado) res.tableroReiniciado = true;
   if (evento) res.evento = evento;
   if (eventoError) res.eventoError = true;
   return res;
