@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Juego de palabras hexagonal</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>Palabras hexagonales</h1>
+
+    <section class="controles">
+      <label>Modo
+        <select id="modo">
+          <option value="supervivencia">Supervivencia</option>
+          <option value="misiones">Misiones</option>
+        </select>
+      </label>
+      <label>Tema
+        <select id="tema">
+          <option value="halloween">Halloween</option>
+          <option value="navidad">Navidad</option>
+        </select>
+      </label>
+      <label>Lemario propio
+        <input type="file" id="lemario-archivo" accept=".txt,text/plain">
+      </label>
+      <button type="button" id="nueva">Nueva partida</button>
+    </section>
+
+    <section class="panel">
+      <div>Puntuación: <strong id="puntos">0</strong></div>
+      <div>Modo: <strong id="modo-actual"></strong></div>
+      <div id="eventos" aria-live="polite"></div>
+      <ul id="objetivos"></ul>
+    </section>
+
+    <svg id="tablero" role="img" aria-label="Tablero hexagonal"></svg>
+
+    <section class="jugada">
+      <output id="palabra" aria-live="polite">&nbsp;</output>
+      <button type="button" id="enviar">Enviar</button>
+      <button type="button" id="borrar">Borrar</button>
+    </section>
+
+    <p id="mensaje" role="status"></p>
+  </main>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+:root {
+  --fondo: #1f2933;
+  --casilla: #3e4c59;
+  --texto: #f5f7fa;
+  --acento: #4dabf7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--fondo); color: var(--texto);
+  font-family: system-ui, sans-serif; transition: background 0.3s;
+}
+main { max-width: 760px; margin: 0 auto; padding: 0.75rem; }
+h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+.controles { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: end; margin-bottom: 0.6rem; }
+.controles label { display: flex; flex-direction: column; font-size: 0.8rem; gap: 0.15rem; }
+select, button, input[type="file"] { font: inherit; }
+button, select {
+  background: var(--casilla); color: var(--texto); border: 1px solid var(--acento);
+  border-radius: 6px; padding: 0.4rem 0.8rem;
+}
+button { cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+.panel { font-size: 0.95rem; display: grid; gap: 0.2rem; margin-bottom: 0.4rem; }
+.panel ul { margin: 0; padding-left: 1.2rem; }
+.panel .cumplido { text-decoration: line-through; opacity: 0.7; }
+#tablero {
+  width: 100%; height: min(50vh, 560px); display: block;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.hex { fill: var(--casilla); stroke: var(--acento); stroke-width: 1.5; cursor: pointer; }
+.hex.congelada { fill: #9ec9e8; fill-opacity: 0.55; stroke-dasharray: 4 3; cursor: not-allowed; }
+.hex.oculta { fill-opacity: 0.6; }
+.hex.especial { stroke-width: 3; }
+.hex.seleccionada { fill: var(--acento); fill-opacity: 0.85; }
+.hex.ultima { stroke: var(--texto); stroke-width: 4; }
+.hueco { fill: none; stroke: var(--texto); stroke-opacity: 0.25; stroke-dasharray: 3 4; pointer-events: none; }
+.letra {
+  fill: var(--texto); font-size: 22px; font-weight: 700; text-anchor: middle;
+  dominant-baseline: middle; pointer-events: none;
+}
+.icono { fill: var(--acento); font-size: 11px; text-anchor: middle; pointer-events: none; }
+.hielo { fill: #e6f4ff; }
+.jugada { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.5rem; }
+#palabra {
+  flex: 1; min-height: 2.2rem; font-size: 1.5rem; letter-spacing: 0.15em;
+  font-weight: 700; text-transform: uppercase;
+}
+#mensaje { min-height: 1.5rem; font-weight: 600; }
+#mensaje.derrota { color: #ff6b6b; }
+#mensaje.victoria { color: #69db7c; }
