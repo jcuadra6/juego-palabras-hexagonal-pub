@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { cargarLemario, normalizar } from '../src/lemario.js';
-import { cargarTema, crearMision, actualizarMision, misionCumplida } from '../src/modos.js';
+import { avisosLemario, cargarTema, crearMision, actualizarMision, misionCumplida } from '../src/modos.js';
 
 const leer = (ruta) => readFileSync(new URL(ruta, import.meta.url), 'utf8');
 const lemario = cargarLemario(leer('../data/lemario-muestra.txt'));
@@ -82,4 +82,16 @@ test('misionCumplida solo si todos los objetivos están cumplidos', () => {
   actualizarMision(m, { palabra: 'sol', casillasRegeneradas: 1 }, tema);
   assert.equal(misionCumplida(m), true);
   assert.equal(normalizar('Ñu'), 'ñu');
+});
+
+test('avisosLemario: avisa de palabras objetivo ausentes y de longitud inalcanzable', () => {
+  const tema = temaMin([{ tipo: 'longitud', meta: 6 }, { tipo: 'tema', meta: 2 }]);
+  const corto = cargarLemario('sol\nmar\ncasa');
+  const avisos = avisosLemario(tema, corto);
+  assert.equal(avisos.length, 2);
+  assert.match(avisos[0], /luna/);
+  assert.doesNotMatch(avisos[0], /sol/);
+  assert.match(avisos[1], /6/);
+  assert.deepEqual(avisosLemario(tema, cargarLemario('sol\nmar\nluna\nperros')), []);
+  assert.deepEqual(avisosLemario(null, corto), []);
 });

@@ -1,7 +1,7 @@
 // Conecta la lógica del juego con la interfaz web (todo en el navegador, sin servidor).
 import { crearPartida, jugarPalabra } from './partida.js';
 import { cargarLemario } from './lemario.js';
-import { cargarTema } from './modos.js';
+import { avisosLemario, cargarTema } from './modos.js';
 import { crearIaSimulada } from './ia.js';
 import { crearRng } from './rng.js';
 import {
@@ -22,6 +22,7 @@ const MOTIVOS = {
   'no-vecinas': 'Las casillas deben ser vecinas.',
   'no-existe': 'El camino pasa por una casilla que no existe.',
   'partida-terminada': 'La partida ha terminado.',
+  ocupada: 'Hay una jugada en curso.',
 };
 const TIPOS_EVENTO = { eliminar: 'Eliminar casillas', congelar: 'Congelar casillas', ocultar: 'Ocultar letras' };
 const TIPOS_RETO = {
@@ -99,7 +100,7 @@ function celdaDeElemento(elemento) {
 
 async function enviar() {
   const p = estado.partida;
-  if (estado.ocupado || p.estado !== 'jugando' || estado.camino.length === 0) return;
+  if (!p || estado.ocupado || p.estado !== 'jugando' || estado.camino.length === 0) return;
   estado.ocupado = true;
   el.enviar.disabled = true;
   el.borrar.disabled = true;
@@ -121,8 +122,9 @@ async function enviar() {
     estado.camino = [];
     let texto = `«${res.palabra}»: +${res.puntos} puntos, ${res.anadidas} casilla(s) nueva(s).`;
     if (res.evento) texto += ` Evento: ${TIPOS_EVENTO[res.evento.tipo]}.`;
+    if (res.tableroReiniciado) texto += ' No quedaban palabras posibles: el tablero se ha reiniciado.';
     if (p.estado === 'victoria') mostrarMensaje(`¡Victoria! Misión cumplida con ${p.puntos} puntos.`, 'victoria');
-    else if (p.estado === 'derrota') mostrarMensaje(`Derrota: el tablero se quedó sin jugadas. Puntos: ${p.puntos}.`, 'derrota');
+    else if (p.estado === 'derrota') mostrarMensaje(`Derrota: no queda ninguna palabra posible en el tablero. Puntos: ${p.puntos}.`, 'derrota');
     else mostrarMensaje(texto);
   } else {
     estado.camino = [];
@@ -133,7 +135,7 @@ async function enviar() {
 
 function alPulsar(ev) {
   const p = estado.partida;
-  if (estado.ocupado || p.estado !== 'jugando') return;
+  if (!p || estado.ocupado || p.estado !== 'jugando') return;
   const celda = celdaDeElemento(ev.target);
   if (!celda) return;
   ev.preventDefault();
@@ -165,6 +167,10 @@ async function nuevaPartida() {
   const modo = el.modo.value;
   const tema = modo === 'misiones' ? estado.temas[el.tema.value] : null;
   el.tema.disabled = modo !== 'misiones';
+  if (modo === 'misiones' && !tema) {
+    mostrarMensaje('No hay temas cargados: usa supervivencia.', 'derrota');
+    return;
+  }
   aplicarPaleta(tema ? tema.paleta : PALETA_NEUTRA);
   const rng = crearRng(Date.now());
   estado.partida = crearPartida({
@@ -173,7 +179,8 @@ async function nuevaPartida() {
   estado.camino = [];
   estado.ocupado = false;
   estado.arrastre = null;
-  mostrarMensaje('');
+  if (estado.partida.estado === 'derrota') mostrarMensaje('El lemario no permite formar ninguna palabra en el tablero inicial.', 'derrota');
+  else mostrarMensaje('');
   render();
 }
 
@@ -183,24 +190,19 @@ async function cargarTextoLemario(texto) {
   estado.lemario = lemario;
 }
 
-async function iniciar() {
-  try {
-    const [texto, ...temas] = await Promise.all([
-      fetch('data/lemario-muestra.txt').then((r) => r.text()),
-      ...TEMAS.map((t) => fetch(`data/temas/${t}.json`).then((r) => r.json())),
-    ]);
-    await cargarTextoLemario(texto);
-    TEMAS.forEach((t, i) => { estado.temas[t] = cargarTema(temas[i]); });
-  } catch (e) {
-    mostrarMensaje(`No se pudieron cargar los datos: ${e.message}`, 'derrota');
-    return;
-  }
+async function cargarJson(ruta, tipo) {
+  const r = await fetch(ruta);
+  if (!r.ok) throw new Error(`${ruta}: HTTP ${r.status}`);
+  return tipo === 'texto' ? r.text() : r.json();
+}
+
+function conectarEventos() {
   el.svg.addEventListener('pointerdown', alPulsar);
   el.svg.addEventListener('pointermove', alMover);
   document.addEventListener('pointerup', alSoltar);
   document.addEventListener('pointercancel', () => { estado.arrastre = null; });
   el.enviar.addEventListener('click', enviar);
-  el.borrar.addEventListener('click', () => { if (!estado.ocupado) cambiarCamino([]); });
+  el.borrar.addEventListener('click', () => { if (estado.partida && !estado.ocupado) cambiarCamino([]); });
   el.nueva.addEventListener('click', nuevaPartida);
   el.modo.addEventListener('change', nuevaPartida);
   el.tema.addEventListener('change', nuevaPartida);
@@ -210,11 +212,30 @@ async function iniciar() {
     try {
       await cargarTextoLemario(await f.text());
       await nuevaPartida();
-      mostrarMensaje(`Lemario cargado: ${estado.lemario.palabras.length} palabras.`);
+      const avisos = avisosLemario(estado.partida && estado.partida.tema, estado.lemario);
+      mostrarMensaje(
+        `Lemario cargado: ${estado.lemario.palabras.length} palabras.${avisos.map((a) => ` Aviso: ${a}`).join('')}`,
+        avisos.length > 0 ? 'derrota' : '',
+      );
     } catch (e) {
       mostrarMensaje(`Lemario no válido: ${e.message}`, 'derrota');
     }
   });
+}
+
+async function iniciar() {
+  conectarEventos();
+  try {
+    const [texto, ...temas] = await Promise.all([
+      cargarJson('data/lemario-muestra.txt', 'texto'),
+      ...TEMAS.map((t) => cargarJson(`data/temas/${t}.json`, 'json')),
+    ]);
+    await cargarTextoLemario(texto);
+    TEMAS.forEach((t, i) => { estado.temas[t] = cargarTema(temas[i]); });
+  } catch (e) {
+    mostrarMensaje(`No se pudieron cargar los datos: ${e.message}. Sirve la carpeta por http (ver README).`, 'derrota');
+    return;
+  }
   await nuevaPartida();
 }
 

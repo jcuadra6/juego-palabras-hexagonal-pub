@@ -97,3 +97,20 @@ export function actualizarMision(mision, resultado, tema) {
 export function misionCumplida(mision) {
   return mision.objetivos.every((o) => o.cumplido);
 }
+
+// Avisos (no bloqueantes) cuando un lemario propio hace inalcanzables los retos del tema.
+export function avisosLemario(tema, lemario) {
+  if (!tema) return [];
+  const avisos = [];
+  const faltan = tema.palabrasObjetivo.filter((p) => !lemario.existe(p));
+  if (faltan.length > 0) {
+    avisos.push(`Faltan palabras del tema en el lemario: ${faltan.join(', ')}.`);
+  }
+  const maxLong = lemario.palabras.reduce((m, p) => Math.max(m, p.length), 0);
+  for (const r of tema.retos) {
+    if (r.tipo === 'longitud' && maxLong < r.meta) {
+      avisos.push(`Ninguna palabra del lemario llega a ${r.meta} letras.`);
+    }
+  }
+  return avisos;
+}
