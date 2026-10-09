@@ -104,7 +104,18 @@ async function enviar() {
   el.enviar.disabled = true;
   el.borrar.disabled = true;
   const camino = estado.camino;
-  const res = await jugarPalabra(p, camino);
+  let res;
+  try {
+    res = await jugarPalabra(p, camino);
+  } catch (e) {
+    if (estado.partida !== p) return; // otra partida ocupa ya la interfaz
+    estado.ocupado = false;
+    estado.camino = [];
+    mostrarMensaje(`Error al validar la palabra: ${e.message}`, 'derrota');
+    render();
+    return;
+  }
+  if (estado.partida !== p) return; // se empezó otra partida durante la jugada: se descarta
   estado.ocupado = false;
   if (res.aceptada) {
     estado.camino = [];
@@ -146,7 +157,7 @@ function alSoltar() {
   const arrastre = estado.arrastre;
   estado.arrastre = null;
   // Solo se envía al soltar si realmente se arrastró; un toque suelto solo selecciona.
-  if (arrastre && arrastre.movido && estado.camino.length > 1) enviar();
+  if (arrastre && arrastre.movido && estado.camino.length > 1) enviar().catch((e) => mostrarMensaje(`Error: ${e.message}`, 'derrota'));
 }
 
 async function nuevaPartida() {
