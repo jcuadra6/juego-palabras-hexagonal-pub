@@ -1,0 +1,18 @@
+{
+  "nombre": "Halloween",
+  "paleta": { "fondo": "#1b1226", "casilla": "#3a2250", "texto": "#f4e9d8", "acento": "#ff7a1a" },
+  "eventos": [
+    { "tipo": "ocultar", "alcance": { "radio": 2 }, "duracion": 4, "modoCrecimiento": null },
+    { "tipo": "eliminar", "alcance": { "radio": 1 }, "duracion": 0, "modoCrecimiento": "fuera" },
+    { "tipo": "congelar", "alcance": { "radio": 1 }, "duracion": 3, "modoCrecimiento": "mixto" }
+  ],
+  "palabrasObjetivo": [
+    "calabaza", "fantasma", "bruja", "murcielago", "sombra", "vampiro",
+    "tumba", "miedo", "noche", "monstruo", "hechizo", "esqueleto"
+  ],
+  "retos": [
+    { "tipo": "tema", "meta": 3 },
+    { "tipo": "longitud", "meta": 6 },
+    { "tipo": "regenerar", "meta": 5 }
+  ]
+}

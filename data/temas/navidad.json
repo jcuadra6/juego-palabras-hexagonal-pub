@@ -1,0 +1,18 @@
+{
+  "nombre": "Navidad",
+  "paleta": { "fondo": "#0f2a1d", "casilla": "#1f4d36", "texto": "#fdf6e3", "acento": "#d62839" },
+  "eventos": [
+    { "tipo": "congelar", "alcance": { "radio": 2 }, "duracion": 3, "modoCrecimiento": "rellenar" },
+    { "tipo": "ocultar", "alcance": { "radio": 1 }, "duracion": 2, "modoCrecimiento": null },
+    { "tipo": "eliminar", "alcance": { "radio": 1 }, "duracion": 0, "modoCrecimiento": null }
+  ],
+  "palabrasObjetivo": [
+    "regalo", "nieve", "estrella", "belen", "turron", "trineo",
+    "villancico", "campana", "navidad", "abeto", "cena", "brindis"
+  ],
+  "retos": [
+    { "tipo": "tema", "meta": 3 },
+    { "tipo": "longitud", "meta": 5 },
+    { "tipo": "regenerar", "meta": 4 }
+  ]
+}

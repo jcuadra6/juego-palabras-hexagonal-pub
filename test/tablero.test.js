@@ -51,7 +51,9 @@ test('hayPalabraPosible', () => {
   assert.equal(hayPalabraPosible(t, lem('ala')), true);
   assert.equal(hayPalabraPosible(t, lem('alma')), false);
   t.casilla(1, 0).congeladaHasta = 5;
-  assert.equal(hayPalabraPosible(t, lem('ala')), false);
+  assert.equal(hayPalabraPosible(t, lem('ala')), false); // por defecto solo cuentan las libres
+  assert.equal(hayPalabraPosible(t, lem('ala'), { incluirCongeladas: true }), true);
+  assert.equal(hayPalabraPosible(t, lem('alma'), { incluirCongeladas: true }), false);
 });
 
 test('hayPalabraPosible: poda eficaz en tablero grande', () => {
@@ -92,7 +94,7 @@ test('garantizarPalabraPosible', () => {
   assert.equal(hayPalabraPosible(t, l), true);
   const t2 = tableroDesde([{ q: 0, r: 0, letra: 'x' }, { q: 1, r: 0, letra: 'x' }]);
   assert.equal(garantizarPalabraPosible(t2, l, crearRng(1)), false);
-  assert.equal(garantizarPalabraPosible(t, lem('alma'), crearRng(1)), false); // sin palabras de 3 letras
+  assert.equal(garantizarPalabraPosible(t, lem('alma'), crearRng(1)), false); // no cabe un camino de 4 casillas distintas
 });
 
 test('garantizarPalabraPosible: ignora casillas congeladas', () => {
@@ -112,4 +114,12 @@ test('crearTableroInicial', () => {
   assert.deepEqual([...t.casillas.keys()].sort(), esperadas);
   for (const c of t.casillas.values()) assert.equal(c.letra.length, 1);
   assert.equal(hayPalabraPosible(t, lem('sol')), true);
+});
+
+test('garantizarPalabraPosible: usa la longitud mínima del lemario si no hay palabras de 3 letras', () => {
+  const t = tableroDesde([...[{ q: 0, r: 0 }, ...anillo(1)].map((c) => ({ ...c, letra: 'x' }))]);
+  const l = lem('perro', 'gatos');
+  assert.equal(hayPalabraPosible(t, l), false);
+  assert.equal(garantizarPalabraPosible(t, l, crearRng(3)), true);
+  assert.equal(hayPalabraPosible(t, l), true);
 });
