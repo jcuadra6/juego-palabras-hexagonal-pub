@@ -18,7 +18,17 @@ class Lemario {
   constructor(palabras) {
     this.raiz = new Map();
     this.palabras = palabras;
+    this._porLongitud = new Map();
+    this._pares = new Map();
+    this._longitudMaxima = 0;
     for (const p of palabras) {
+      if (!this._porLongitud.has(p.length)) this._porLongitud.set(p.length, []);
+      this._porLongitud.get(p.length).push(p);
+      this._longitudMaxima = Math.max(this._longitudMaxima, p.length);
+      for (let i = 0; i < p.length - 1; i++) {
+        const par = p[i] + p[i + 1];
+        this._pares.set(par, (this._pares.get(par) ?? 0) + 1);
+      }
       let nodo = this.raiz;
       for (const c of p) {
         if (!nodo.has(c)) nodo.set(c, new Map());
@@ -30,6 +40,24 @@ class Lemario {
 
   get tamano() {
     return this.palabras.length;
+  }
+
+  get longitudMaxima() {
+    return this._longitudMaxima;
+  }
+
+  palabrasDeLongitud(n) {
+    return this._porLongitud.get(n) ?? [];
+  }
+
+  siguientesLetras(prefijo) {
+    const nodo = this._nodo(prefijo);
+    if (!nodo) return [];
+    return [...nodo.keys()].filter((c) => c !== '$').sort();
+  }
+
+  frecuenciaPar(a, b) {
+    return this._pares.get(a + b) ?? 0;
   }
 
   _nodo(texto) {
