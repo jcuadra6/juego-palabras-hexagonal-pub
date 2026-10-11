@@ -37,7 +37,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 1: Configuración del generador
+### Task 1: Configuración del generador
 
 **Archivos:**
 - Modificar: `src/config.js`
@@ -59,7 +59,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 2: Ampliaciones del lemario
+### Task 2: Ampliaciones del lemario
 
 **Archivos:**
 - Modificar: `src/lemario.js`
@@ -81,7 +81,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 3: Motor de colocación
+### Task 3: Motor de colocación
 
 **Archivos:**
 - Crear: `src/colocacion.js`
@@ -103,7 +103,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 4: Elección de letras
+### Task 4: Elección de letras
 
 **Archivos:**
 - Crear: `src/letras.js`
@@ -131,7 +131,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 5: Garantía de palabra larga
+### Task 5: Garantía de palabra larga
 
 **Archivos:**
 - Crear: `src/garantia.js`
@@ -160,7 +160,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 6: Siembra del tablero inicial
+### Task 6: Siembra del tablero inicial
 
 **Archivos:**
 - Crear: `src/siembra.js`, `test/helpers.js`
@@ -191,7 +191,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 7: Fachada del generador y regeneración en `crecimiento.js`
+### Task 7: Fachada del generador y regeneración en `crecimiento.js`
 
 **Archivos:**
 - Crear: `src/generador.js`
@@ -216,7 +216,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 8: Integración en `tablero.js` y `partida.js`
+### Task 8: Integración en `tablero.js` y `partida.js`
 
 **Archivos:**
 - Modificar: `src/tablero.js`, `src/partida.js`, `src/config.js`
@@ -241,7 +241,7 @@ Cada línea tiene su test en la tarea indicada.
 
 ---
 
-### Tarea 9: Documentación y verificación en el navegador
+### Task 9: Documentación y verificación en el navegador
 
 **Archivos:**
 - Modificar: `README.md`, y `src/main.js` / `src/ui.js` solo si la escala del tablero grande lo exige.
