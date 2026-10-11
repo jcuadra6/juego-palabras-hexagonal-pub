@@ -96,11 +96,12 @@ Módulos nuevos:
 
 Ampliaciones de `lemario.js` (índices calculados una sola vez al cargar el lemario):
 - `palabrasDeLongitud(n): string[]`.
-- `buscarPatron(patron: (string | null)[], limite): string[]`, donde `null` es una casilla libre.
-- `frecuenciaPar(a, b): number`.
+- `siguientesLetras(prefijo): string[]`: letras que pueden continuar un prefijo, para recorrer el árbol de prefijos mientras se busca un camino en el tablero.
+- `frecuenciaPar(a, b): number`: veces que la letra `a` va seguida de `b` en las palabras del lemario.
+- `longitudMaxima: number`.
 
 Cambios en el resto:
-- `tablero.js`: `crearTableroInicial` delega en `sembrarTablero`. `hayPalabraPosible` admite `{ longitudMinima }`.
+- `tablero.js`: `crearTableroInicial` desaparece, porque `generador.js` ya depende de `tablero.js` y delegar crearía una dependencia circular. `partida.js` llama directamente a `sembrarTablero`. `hayPalabraPosible` admite `{ longitudMinima }`.
 - `crecimiento.js`: `renovarLetras` y `crecer` deciden primero las posiciones y piden las letras de golpe a `elegirLetras`.
 - `partida.js`: llama a `asegurarPalabraLarga` tras cada jugada aceptada.
 - Eventos, marcas, puntuación, congeladas, ocultas y reglas de final: sin cambios.
