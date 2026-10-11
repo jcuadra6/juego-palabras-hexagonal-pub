@@ -233,7 +233,7 @@ Cada línea tiene su test en la tarea indicada.
   - Tras una jugada aceptada, `asegurarPalabraLarga` se llama con `preferir` que contiene las claves de las casillas del camino y `garantizarPalabraPosible` ya no se llama desde `partida.js`.
   - Misiones: al reiniciar el tablero se vuelve a llamar a `generador.sembrarTablero`.
   - Migrar los tests de `tablero.test.js` que usaban `crearTableroInicial` a `sembrarTablero` con `radioInicial: 1`, y los de `partida.test.js` que dependan de 7 casillas a `config: { ...GENERADOR, radioInicial: 1 }`. Conservar la intención de cada aserción.
-  - Con el generador local real y `radioInicial: 3`, una partida de supervivencia empieza en `'jugando'` y en cada jugada aceptada de una secuencia de 5 palabras `hayPalabraPosible(tablero, lemario, { incluirCongeladas: true, longitudMinima: N })` es `true` al terminar (con `lemarioSintetico` de `test/helpers.js` y `N = 5`).
+  - Con el generador local real, `radioInicial: 3` y `eventoCada: 0` (sin eventos), una partida de supervivencia empieza en `'jugando'` y tras cada jugada aceptada de una secuencia de 5 palabras `hayPalabraPosible(tablero, lemario, { incluirCongeladas: true, longitudMinima: N })` es `true` (con `lemarioSintetico` de `test/helpers.js` y `N = 5`). Sin eventos porque `asegurarPalabraLarga` se llama justo después de crecer, como antes `garantizarPalabraPosible`, y un evento posterior puede eliminar la palabra y provocar derrota, como ya ocurre hoy.
 - [ ] **Paso 2: ejecutar** `node --test test/tablero.test.js test/partida.test.js`; esperado: FALLA.
 - [ ] **Paso 3: implementar** los cambios.
 - [ ] **Paso 4: ejecutar** `npm test`; esperado: PASA, con todos los tests anteriores (migrados) y los nuevos.
