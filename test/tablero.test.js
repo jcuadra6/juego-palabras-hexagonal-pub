@@ -123,3 +123,14 @@ test('garantizarPalabraPosible: usa la longitud mínima del lemario si no hay pa
   assert.equal(garantizarPalabraPosible(t, l, crearRng(3)), true);
   assert.equal(hayPalabraPosible(t, l), true);
 });
+
+test('hayPalabraPosible: longitudMinima exige palabras más largas', () => {
+  const l = lem('sol', 'sola');
+  const t = tableroDesde([
+    { q: 0, r: 0, letra: 's' }, { q: 1, r: 0, letra: 'o' }, { q: 2, r: 0, letra: 'l' },
+  ]);
+  assert.equal(hayPalabraPosible(t, l), true);
+  assert.equal(hayPalabraPosible(t, l, { longitudMinima: 4 }), false);
+  t.poner(3, 0, 'a');
+  assert.equal(hayPalabraPosible(t, l, { longitudMinima: 4 }), true);
+});
