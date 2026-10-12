@@ -52,7 +52,13 @@ test('palabra de 3 letras: 9 puntos, 1 casilla nueva, camino renovado', async ()
   assert.equal(p.puntos, 9);
   assert.equal(p.tablero.turno, 1);
   assert.ok(p.palabrasUsadas.has('sol'));
-  for (const c of CAM3) assert.equal(p.tablero.casilla(c.q, c.r).letra, 'z');
+  const anteriores = ['s', 'o', 'l'];
+  CAM3.forEach((c, i) => {
+    const letra = p.tablero.casilla(c.q, c.r).letra;
+    assert.ok(typeof letra === 'string' && letra.length > 0);
+    assert.notEqual(letra, anteriores[i]);
+  });
+  assert.equal(p.tablero.casilla(-1, 1).letra, 'a');
   assert.equal(p.tablero.casilla(-1, 0).letra, 'x');
   assert.equal(p.tablero.casillas.size, 8);
 });

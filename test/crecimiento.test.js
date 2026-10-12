@@ -103,3 +103,50 @@ test('marcaAleatoria devuelve marcas válidas', () => {
   }
   assert.equal(vistos.size, 4);
 });
+
+// Generador de prueba: registra las llamadas y devuelve siempre la misma letra.
+function generadorFalso(letra) {
+  const llamadas = [];
+  return {
+    llamadas,
+    elegirLetras(tablero, posiciones, lem, config, rng) {
+      llamadas.push(posiciones.map((p) => clave(p.q, p.r)));
+      return new Map(posiciones.map((p) => [clave(p.q, p.r), letra]));
+    },
+  };
+}
+
+test('renovarLetras con generador: una sola llamada, solo las del camino, distinta de la anterior', () => {
+  const t = tableroDesde([
+    { q: 0, r: 0, letra: 'q' }, { q: 1, r: 0, letra: 'b' }, { q: 0, r: 1, letra: 'c' },
+  ]);
+  const generador = generadorFalso('q');
+  const A = { q: 0, r: 0 };
+  const B = { q: 1, r: 0 };
+  renovarLetras(t, [A, B, A], lemario, crearRng(1), { generador });
+  assert.equal(generador.llamadas.length, 1);
+  assert.deepEqual([...generador.llamadas[0]].sort(), ['0,0', '1,0']);
+  assert.notEqual(t.casilla(0, 0).letra, 'q');
+  assert.ok(t.casilla(0, 0).letra in FRECUENCIAS_LETRAS);
+  assert.equal(t.casilla(1, 0).letra, 'q');
+  assert.equal(t.casilla(0, 1).letra, 'c');
+});
+
+test('crecer con generador: elegirLetras una vez con exactamente las posiciones nuevas', () => {
+  for (const [modo, huecos, esperado] of [
+    ['rellenar', ['0,0', '1,0'], { anadidas: 3, rellenadas: 2 }],
+    ['fuera', ['0,0', '1,0'], { anadidas: 3, rellenadas: 0 }],
+    ['mixto', ['0,0', '1,0', '-1,0', '0,1'], { anadidas: 3, rellenadas: 2 }],
+  ]) {
+    const t = tableroBase();
+    eliminarCasillas(t, huecos);
+    const previas = new Set(t.casillas.keys());
+    const generador = generadorFalso('x');
+    const res = crecer(t, 3, modo, lemario, crearRng(2), { generador });
+    assert.deepEqual(res, esperado, modo);
+    assert.equal(generador.llamadas.length, 1, modo);
+    const nuevas = [...t.casillas.keys()].filter((k) => !previas.has(k));
+    assert.deepEqual([...generador.llamadas[0]].sort(), nuevas.sort(), modo);
+    for (const k of nuevas) assert.equal(t.casillas.get(k).letra, 'x');
+  }
+});
