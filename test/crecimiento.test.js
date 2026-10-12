@@ -1,16 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Tablero, tableroDesde, crearTableroInicial } from '../src/tablero.js';
+import { Tablero, tableroDesde } from '../src/tablero.js';
+import { sembrarTablero } from '../src/siembra.js';
 import { clave, vecinos } from '../src/hex.js';
 import { crearRng } from '../src/rng.js';
 import { cargarLemario } from '../src/lemario.js';
-import { FRECUENCIAS_LETRAS } from '../src/config.js';
+import { FRECUENCIAS_LETRAS, GENERADOR } from '../src/config.js';
 import { eliminarCasillas, renovarLetras, marcaAleatoria, crecer } from '../src/crecimiento.js';
 
 const lemario = cargarLemario('casa\nperro\ngato\nmesa\nsol\n');
 
 function tableroBase() {
-  return crearTableroInicial(lemario, crearRng(1));
+  return sembrarTablero(lemario, { ...GENERADOR, radioInicial: 1 }, crearRng(1));
 }
 
 test('eliminarCasillas quita, registra huecos, cuenta e ignora desconocidas', () => {

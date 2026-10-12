@@ -2,8 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   Tablero, tableroDesde, caminoValido, palabraDeCamino,
-  hayPalabraPosible, garantizarPalabraPosible, crearTableroInicial,
+  hayPalabraPosible, garantizarPalabraPosible,
 } from '../src/tablero.js';
+import { sembrarTablero } from '../src/siembra.js';
+import { GENERADOR } from '../src/config.js';
 import { cargarLemario } from '../src/lemario.js';
 import { crearRng } from '../src/rng.js';
 import { clave, anillo } from '../src/hex.js';
@@ -108,8 +110,8 @@ test('garantizarPalabraPosible: ignora casillas congeladas', () => {
   assert.equal(t.casilla(0, 0).letra, 'x');
 });
 
-test('crearTableroInicial', () => {
-  const t = crearTableroInicial(lem('sol'), crearRng(7));
+test('sembrarTablero con radioInicial 1 crea 7 casillas con palabra posible', () => {
+  const t = sembrarTablero(lem('sol'), { ...GENERADOR, radioInicial: 1 }, crearRng(7));
   const esperadas = [clave(0, 0), ...anillo(1).map((c) => clave(c.q, c.r))].sort();
   assert.deepEqual([...t.casillas.keys()].sort(), esperadas);
   for (const c of t.casillas.values()) assert.equal(c.letra.length, 1);

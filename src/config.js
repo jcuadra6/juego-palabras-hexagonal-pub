@@ -3,7 +3,6 @@ export const LONGITUD_MINIMA = 3;
 export const LETRAS_POR_CASILLA_NUEVA = 2;
 export const EVENTO_CADA_PALABRAS = 3;
 export const PROBABILIDAD_ESPECIAL = 0.1;
-export const RADIO_INICIAL = 1;
 export const MODO_POR_DEFECTO = 'rellenar';
 
 // Frecuencias relativas aproximadas (%) de las letras en español.

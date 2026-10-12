@@ -1,6 +1,6 @@
 // Tablero hexagonal: casillas, caminos y comprobación de palabras posibles.
-import { clave, vecinos, anillo } from './hex.js';
-import { LONGITUD_MINIMA, RADIO_INICIAL } from './config.js';
+import { clave, vecinos } from './hex.js';
+import { LONGITUD_MINIMA } from './config.js';
 
 export class Tablero {
   constructor() {
@@ -127,13 +127,4 @@ export function garantizarPalabraPosible(tablero, lemario, rng) {
   const cadena = cadenas[Math.floor(rng() * cadenas.length)];
   cadena.forEach((casilla, i) => { casilla.letra = palabra[i]; });
   return true;
-}
-
-export function crearTableroInicial(lemario, rng) {
-  const t = new Tablero();
-  const celdas = [{ q: 0, r: 0 }];
-  for (let radio = 1; radio <= RADIO_INICIAL; radio++) celdas.push(...anillo(radio));
-  for (const { q, r } of celdas) t.poner(q, r, lemario.letraAleatoria(rng));
-  garantizarPalabraPosible(t, lemario, rng);
-  return t;
 }

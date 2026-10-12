@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tableroDesde } from '../src/tablero.js';
+import { tableroDesde, hayPalabraPosible } from '../src/tablero.js';
+import { GENERADOR } from '../src/config.js';
+import { generadorLocal } from '../src/generador.js';
+import { vecinos } from '../src/hex.js';
+import { crearRng } from '../src/rng.js';
+import { lemarioSintetico } from './helpers.js';
 import { cargarLemario } from '../src/lemario.js';
 import { crearIaSimulada } from '../src/ia.js';
 import { modoActivo, EVENTOS_BASE } from '../src/eventos.js';
@@ -27,7 +32,9 @@ function tableroPrueba() {
 }
 
 function nueva(extra = {}) {
-  const p = crearPartida({ modo: 'supervivencia', lemario, ia, rng, ...extra });
+  const p = crearPartida({
+    modo: 'supervivencia', lemario, ia, rng, config: { ...GENERADOR, radioInicial: 1 }, ...extra,
+  });
   p.tablero = tableroPrueba();
   return p;
 }
@@ -258,9 +265,10 @@ test('supervivencia: congelar todo el tablero no es derrota y el tablero vuelve 
 });
 
 test('supervivencia: sin ninguna palabra posible (ni congeladas) sigue siendo derrota', async () => {
-  const p = nueva({ ia: iaFija(null), eventoCada: 1 });
-  // Tras la jugada todas las letras serán 'z' y 'zzz' se usa; se vacía el lemario efectivo.
-  p.lemario = cargarLemario('sol\n');
+  const iaAcepta = { validarPalabra: async () => ({ valida: true }), siguienteEvento: async () => null };
+  const p = nueva({ ia: iaAcepta, eventoCada: 1 });
+  // El lemario solo tiene una palabra de 10 letras: no cabe en el tablero y no se puede garantizar.
+  p.lemario = cargarLemario('zzzzzzzzzz\n');
   const ventana = [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }];
   escribir(p, ventana, 'sol');
   for (const k of ['-1,1', '-1,0', '0,-1', '1,-1']) p.tablero.casillas.delete(k);
@@ -331,4 +339,124 @@ test('crearPartida: un tablero inicial sin palabra posible no queda en jugando',
   const l = cargarLemario('ab\n'); // ninguna palabra válida
   const p = crearPartida({ modo: 'supervivencia', lemario: l, ia, rng });
   assert.equal(p.estado, 'derrota');
+});
+
+// Busca un camino de casillas distintas que escriba la palabra; null si no hay.
+function caminoDe(partida, palabra) {
+  const { tablero } = partida;
+  const buscar = (actual) => {
+    if (actual.length === palabra.length) return actual;
+    const ultimo = actual[actual.length - 1];
+    const vecinas = vecinos(ultimo.q, ultimo.r).map((v) => tablero.casilla(v.q, v.r));
+    for (const c of vecinas) {
+      if (c && c.letra === palabra[actual.length] && !actual.includes(c)) {
+        const r = buscar([...actual, c]);
+        if (r) return r;
+      }
+    }
+    return null;
+  };
+  for (const c of tablero.casillas.values()) {
+    if (c.letra === palabra[0]) {
+      const r = buscar([c]);
+      if (r) return r.map(({ q, r: rr }) => ({ q, r: rr }));
+    }
+  }
+  return null;
+}
+
+function generadorEspia() {
+  const llamadas = { sembrar: [], asegurar: [] };
+  const g = {
+    sembrarTablero: (...args) => {
+      llamadas.sembrar.push(args);
+      return tableroPrueba();
+    },
+    elegirLetras: (...args) => generadorLocal.elegirLetras(...args),
+    asegurarPalabraLarga: (...args) => {
+      llamadas.asegurar.push(args);
+      return true;
+    },
+  };
+  return { g, llamadas };
+}
+
+test('crearPartida siembra con el generador una sola vez y guarda generador y config', () => {
+  const { g, llamadas } = generadorEspia();
+  const config = { ...GENERADOR, radioInicial: 1 };
+  const p = crearPartida({ modo: 'supervivencia', lemario, ia, rng, generador: g, config });
+  assert.equal(llamadas.sembrar.length, 1);
+  assert.deepEqual(llamadas.sembrar[0], [lemario, config, rng]);
+  assert.equal(p.generador, g);
+  assert.equal(p.config, config);
+  assert.equal(p.tablero.casilla(0, 0).letra, 's');
+});
+
+test('jugada aceptada: asegurarPalabraLarga recibe preferir con las casillas del camino', async () => {
+  const { g, llamadas } = generadorEspia();
+  const p = crearPartida({
+    modo: 'supervivencia', lemario, ia, rng, generador: g, eventoCada: 0,
+    config: { ...GENERADOR, radioInicial: 1 },
+  });
+  assert.equal((await jugarPalabra(p, CAM3)).aceptada, true);
+  assert.equal(llamadas.asegurar.length, 1);
+  const [tablero, lem, config, r, opciones] = llamadas.asegurar[0];
+  assert.equal(tablero, p.tablero);
+  assert.equal(lem, lemario);
+  assert.equal(config, p.config);
+  assert.equal(r, rng);
+  assert.deepEqual([...opciones.preferir].sort(), ['0,0', '0,1', '1,0']);
+});
+
+test('partida.js ya no llama a garantizarPalabraPosible: solo el generador garantiza', async () => {
+  // Con un generador que no repara nada, un tablero sin palabra queda sin palabra (derrota).
+  const { g } = generadorEspia();
+  const lem = Object.create(cargarLemario('sol\n'));
+  lem.letraAleatoria = () => 'z';
+  g.elegirLetras = (t, posiciones) => new Map(posiciones.map(({ q, r }) => [`${q},${r}`, 'z']));
+  const p = crearPartida({
+    modo: 'supervivencia', lemario: lem, ia, rng, generador: g, eventoCada: 0,
+    config: { ...GENERADOR, radioInicial: 1 },
+  });
+  await jugarPalabra(p, CAM3);
+  assert.equal(p.estado, 'derrota');
+});
+
+test('misiones: al reiniciar el tablero se vuelve a sembrar con el generador', async () => {
+  const { g, llamadas } = generadorEspia();
+  const p = crearPartida({
+    modo: 'misiones', tema: tema([{ tipo: 'longitud', meta: 99 }]), lemario, ia: iaFija(elimina5),
+    rng, generador: g, eventoCada: 1, config: { ...GENERADOR, radioInicial: 1 },
+  });
+  assert.equal(llamadas.sembrar.length, 1);
+  const res = await jugarPalabra(p, CAM3);
+  assert.equal(res.tableroReiniciado, true);
+  assert.equal(llamadas.sembrar.length, 2);
+  assert.deepEqual(llamadas.sembrar[1], [lemario, p.config, rng]);
+});
+
+test('generador local real: supervivencia con radio 3 mantiene siempre una palabra de 5 letras', async () => {
+  const r = crearRng(42);
+  const lem = lemarioSintetico(300, r);
+  const p = crearPartida({
+    modo: 'supervivencia', lemario: lem, ia: crearIaSimulada({ lemario: lem, rng: r }), rng: r,
+    eventoCada: 0, config: { ...GENERADOR, radioInicial: 3 },
+  });
+  assert.equal(p.estado, 'jugando');
+  let jugadas = 0;
+  for (let i = 0; i < 5; i++) {
+    let cam = null;
+    for (const w of lem.palabras) {
+      if (w.length >= 5 && !p.palabrasUsadas.has(w) && (cam = caminoDe(p, w))) break;
+    }
+    assert.ok(cam, 'hay una palabra jugable de 5 o más letras');
+    const res = await jugarPalabra(p, cam);
+    assert.equal(res.aceptada, true);
+    jugadas++;
+    assert.equal(p.estado, 'jugando');
+    assert.equal(
+      hayPalabraPosible(p.tablero, lem, { incluirCongeladas: true, longitudMinima: 5 }), true,
+    );
+  }
+  assert.equal(jugadas, 5);
 });
