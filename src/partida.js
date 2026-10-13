@@ -1,13 +1,14 @@
 // Partida: coordina una jugada completa (validar, puntuar, renovar, crecer, eventos y final).
 import {
-  caminoValido, palabraDeCamino, hayPalabraPosible, garantizarPalabraPosible, crearTableroInicial,
+  caminoValido, palabraDeCamino, hayPalabraPosible,
 } from './tablero.js';
 import { renovarLetras, crecer } from './crecimiento.js';
 import { aplicarEvento, eventoDeMarca, modoActivo } from './eventos.js';
 import { crearMision, actualizarMision, misionCumplida } from './modos.js';
 import { normalizar } from './lemario.js';
 import { clave } from './hex.js';
-import { EVENTO_CADA_PALABRAS } from './config.js';
+import { EVENTO_CADA_PALABRAS, GENERADOR } from './config.js';
+import { generadorLocal } from './generador.js';
 
 // ¿Se acabó el tablero? Solo si no hay palabra ni contando casillas congeladas (spec §3.5).
 // Si solo hay palabra con congeladas, se descongela todo para no dejar al jugador bloqueado:
@@ -23,6 +24,7 @@ function sinJugadas(partida) {
 
 export function crearPartida({
   modo, tema = null, lemario, ia, rng, eventoCada = EVENTO_CADA_PALABRAS,
+  generador = generadorLocal, config = GENERADOR,
 }) {
   const partida = {
     modo,
@@ -31,7 +33,9 @@ export function crearPartida({
     ia,
     rng,
     eventoCada,
-    tablero: crearTableroInicial(lemario, rng),
+    generador,
+    config,
+    tablero: generador.sembrarTablero(lemario, config, rng),
     puntos: 0,
     palabrasUsadas: new Set(),
     eventosActivos: [],
@@ -71,7 +75,7 @@ function registrarEvento(partida, evento) {
 
 function reiniciarTablero(partida) {
   const turno = partida.tablero.turno;
-  partida.tablero = crearTableroInicial(partida.lemario, partida.rng);
+  partida.tablero = partida.generador.sembrarTablero(partida.lemario, partida.config, partida.rng);
   partida.tablero.turno = turno;
   partida.eventosActivos = [];
 }
@@ -88,7 +92,7 @@ export async function jugarPalabra(partida, camino) {
 }
 
 async function jugar(partida, camino) {
-  const { tablero, lemario, rng } = partida;
+  const { tablero, lemario, rng, generador, config } = partida;
 
   const valido = caminoValido(tablero, camino);
   if (!valido.valido) return { aceptada: false, motivo: valido.motivo };
@@ -106,12 +110,16 @@ async function jugar(partida, camino) {
 
   // Las marcas se leen antes de renovar: renovarLetras las borra.
   const marcas = leerMarcas(tablero, camino);
-  renovarLetras(tablero, camino, lemario, rng);
+  renovarLetras(tablero, camino, lemario, rng, { generador, config });
   const modoCrecimiento = marcas.modo ?? modoActivo(partida.eventosActivos, tablero.turno);
   const { anadidas, rellenadas } = crecer(
     tablero, Math.max(1, Math.floor(camino.length / 2)), modoCrecimiento, lemario, rng,
+    { generador, config },
   );
-  garantizarPalabraPosible(tablero, lemario, rng);
+  const preferir = new Set(camino.map((p) => clave(p.q, p.r)));
+  generador.asegurarPalabraLarga(tablero, lemario, config, rng, {
+    preferir, excluir: partida.palabrasUsadas,
+  });
   tablero.turno += 1;
   partida.eventosActivos = partida.eventosActivos.filter((e) => e.hastaTurno > tablero.turno);
 

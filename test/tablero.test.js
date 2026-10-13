@@ -2,8 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   Tablero, tableroDesde, caminoValido, palabraDeCamino,
-  hayPalabraPosible, garantizarPalabraPosible, crearTableroInicial,
+  hayPalabraPosible, garantizarPalabraPosible,
 } from '../src/tablero.js';
+import { sembrarTablero } from '../src/siembra.js';
+import { GENERADOR } from '../src/config.js';
 import { cargarLemario } from '../src/lemario.js';
 import { crearRng } from '../src/rng.js';
 import { clave, anillo } from '../src/hex.js';
@@ -108,8 +110,8 @@ test('garantizarPalabraPosible: ignora casillas congeladas', () => {
   assert.equal(t.casilla(0, 0).letra, 'x');
 });
 
-test('crearTableroInicial', () => {
-  const t = crearTableroInicial(lem('sol'), crearRng(7));
+test('sembrarTablero con radioInicial 1 crea 7 casillas con palabra posible', () => {
+  const t = sembrarTablero(lem('sol'), { ...GENERADOR, radioInicial: 1 }, crearRng(7));
   const esperadas = [clave(0, 0), ...anillo(1).map((c) => clave(c.q, c.r))].sort();
   assert.deepEqual([...t.casillas.keys()].sort(), esperadas);
   for (const c of t.casillas.values()) assert.equal(c.letra.length, 1);
@@ -122,4 +124,29 @@ test('garantizarPalabraPosible: usa la longitud mínima del lemario si no hay pa
   assert.equal(hayPalabraPosible(t, l), false);
   assert.equal(garantizarPalabraPosible(t, l, crearRng(3)), true);
   assert.equal(hayPalabraPosible(t, l), true);
+});
+
+test('hayPalabraPosible: longitudMinima exige palabras más largas', () => {
+  const l = lem('sol', 'sola');
+  const t = tableroDesde([
+    { q: 0, r: 0, letra: 's' }, { q: 1, r: 0, letra: 'o' }, { q: 2, r: 0, letra: 'l' },
+  ]);
+  assert.equal(hayPalabraPosible(t, l), true);
+  assert.equal(hayPalabraPosible(t, l, { longitudMinima: 4 }), false);
+  t.poner(3, 0, 'a');
+  assert.equal(hayPalabraPosible(t, l, { longitudMinima: 4 }), true);
+});
+
+test('hayPalabraPosible: excluir descarta palabras ya usadas', () => {
+  const t = tableroDesde([{ q: 0, r: 0, letra: 's' }, { q: 1, r: 0, letra: 'o' }, { q: 2, r: 0, letra: 'l' }]);
+  const l = cargarLemario('sol\n');
+  assert.equal(hayPalabraPosible(t, l), true);
+  assert.equal(hayPalabraPosible(t, l, { excluir: new Set(['sol']) }), false);
+});
+
+test('hayPalabraPosible: lemario sin longitudMaxima (stub) sigue funcionando', () => {
+  const t = tableroDesde([{ q: 0, r: 0, letra: 's' }, { q: 1, r: 0, letra: 'o' }, { q: 2, r: 0, letra: 'l' }]);
+  const base = cargarLemario('sol\n');
+  const stub = { palabras: base.palabras, esPrefijo: (x) => base.esPrefijo(x), existe: (x) => base.existe(x) };
+  assert.equal(hayPalabraPosible(t, stub), true);
 });

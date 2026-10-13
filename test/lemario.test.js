@@ -52,3 +52,38 @@ test('lemario de muestra tiene al menos 300 palabras', () => {
   assert.ok(l.tamano >= 300);
   for (const p of ['bruja', 'navidad', 'sol', 'ala', 'casa', 'perro', 'mesa']) assert.ok(l.existe(p), p);
 });
+
+test('palabrasDeLongitud devuelve las palabras de esa longitud en orden de inserción', () => {
+  const l = cargarLemario('sol\nsola\nmesa\ncasa');
+  assert.deepEqual(l.palabrasDeLongitud(4), ['sola', 'mesa', 'casa']);
+  assert.deepEqual(l.palabrasDeLongitud(3), ['sol']);
+  assert.deepEqual(l.palabrasDeLongitud(9), []);
+});
+
+test('siguientesLetras devuelve las letras que continúan el prefijo', () => {
+  const l = cargarLemario('sol\nsola\nmesa\ncasa');
+  assert.deepEqual(l.siguientesLetras('so'), ['l']);
+  assert.deepEqual(l.siguientesLetras(''), ['c', 'm', 's']);
+  assert.deepEqual(l.siguientesLetras('zz'), []);
+  assert.deepEqual(l.siguientesLetras('SÓ'), ['l']);
+});
+
+test('frecuenciaPar cuenta las veces que una letra precede a otra', () => {
+  const l = cargarLemario('sol\nsola\nmesa\ncasa');
+  assert.equal(l.frecuenciaPar('s', 'o'), 2);
+  assert.equal(l.frecuenciaPar('o', 'l'), 2);
+  assert.equal(l.frecuenciaPar('s', 'a'), 2);
+  assert.equal(l.frecuenciaPar('a', 's'), 1);
+  assert.equal(l.frecuenciaPar('z', 'x'), 0);
+});
+
+test('longitudMaxima', () => {
+  assert.equal(cargarLemario('sol\nsola\nmesa\ncasa').longitudMaxima, 4);
+});
+
+test('lemario vacío', () => {
+  const l = cargarLemario('');
+  assert.equal(l.longitudMaxima, 0);
+  assert.deepEqual(l.palabrasDeLongitud(3), []);
+  assert.deepEqual(l.siguientesLetras(''), []);
+});

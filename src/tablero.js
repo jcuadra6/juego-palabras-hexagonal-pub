@@ -1,6 +1,6 @@
 // Tablero hexagonal: casillas, caminos y comprobación de palabras posibles.
-import { clave, vecinos, anillo } from './hex.js';
-import { LONGITUD_MINIMA, RADIO_INICIAL } from './config.js';
+import { clave, vecinos } from './hex.js';
+import { LONGITUD_MINIMA } from './config.js';
 
 export class Tablero {
   constructor() {
@@ -56,9 +56,15 @@ export function palabraDeCamino(tablero, camino) {
 }
 
 // Por defecto solo cuentan las casillas libres; con incluirCongeladas también las congeladas.
-export function hayPalabraPosible(tablero, lemario, { incluirCongeladas = false } = {}) {
-  const maxLong = lemario.palabras.reduce((m, p) => Math.max(m, p.length), 0);
-  if (maxLong < LONGITUD_MINIMA) return false;
+// La palabra debe tener al menos longitudMinima letras (nunca menos de LONGITUD_MINIMA).
+// excluir: Set de palabras normalizadas (p. ej. las ya jugadas) que no cuentan.
+export function hayPalabraPosible(
+  tablero, lemario,
+  { incluirCongeladas = false, longitudMinima = LONGITUD_MINIMA, excluir = new Set() } = {},
+) {
+  const minima = Math.max(LONGITUD_MINIMA, longitudMinima);
+  const maxLong = lemario.longitudMaxima ?? lemario.palabras.reduce((m, p) => Math.max(m, p.length), 0);
+  if (maxLong < minima) return false;
   const libres = [...tablero.casillas.values()].filter((c) => incluirCongeladas || c.congeladaHasta <= tablero.turno);
   const libreKeys = new Set(libres.map((c) => clave(c.q, c.r)));
   const vecinosDe = new Map();
@@ -74,7 +80,7 @@ export function hayPalabraPosible(tablero, lemario, { incluirCongeladas = false 
   function dfs(c, prefijo) {
     const texto = prefijo + c.letra;
     if (!lemario.esPrefijo(texto)) return false;
-    if (texto.length >= LONGITUD_MINIMA && lemario.existe(texto)) return true;
+    if (texto.length >= minima && lemario.existe(texto) && !excluir.has(texto)) return true;
     if (texto.length >= maxLong) return false;
     const k = `${clave(c.q, c.r)}|${texto}`;
     if (fallidos.has(k)) return false;
@@ -123,13 +129,4 @@ export function garantizarPalabraPosible(tablero, lemario, rng) {
   const cadena = cadenas[Math.floor(rng() * cadenas.length)];
   cadena.forEach((casilla, i) => { casilla.letra = palabra[i]; });
   return true;
-}
-
-export function crearTableroInicial(lemario, rng) {
-  const t = new Tablero();
-  const celdas = [{ q: 0, r: 0 }];
-  for (let radio = 1; radio <= RADIO_INICIAL; radio++) celdas.push(...anillo(radio));
-  for (const { q, r } of celdas) t.poner(q, r, lemario.letraAleatoria(rng));
-  garantizarPalabraPosible(t, lemario, rng);
-  return t;
 }
