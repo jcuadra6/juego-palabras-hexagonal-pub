@@ -57,11 +57,13 @@ export function palabraDeCamino(tablero, camino) {
 
 // Por defecto solo cuentan las casillas libres; con incluirCongeladas también las congeladas.
 // La palabra debe tener al menos longitudMinima letras (nunca menos de LONGITUD_MINIMA).
+// excluir: Set de palabras normalizadas (p. ej. las ya jugadas) que no cuentan.
 export function hayPalabraPosible(
-  tablero, lemario, { incluirCongeladas = false, longitudMinima = LONGITUD_MINIMA } = {},
+  tablero, lemario,
+  { incluirCongeladas = false, longitudMinima = LONGITUD_MINIMA, excluir = new Set() } = {},
 ) {
   const minima = Math.max(LONGITUD_MINIMA, longitudMinima);
-  const maxLong = lemario.palabras.reduce((m, p) => Math.max(m, p.length), 0);
+  const maxLong = lemario.longitudMaxima ?? lemario.palabras.reduce((m, p) => Math.max(m, p.length), 0);
   if (maxLong < minima) return false;
   const libres = [...tablero.casillas.values()].filter((c) => incluirCongeladas || c.congeladaHasta <= tablero.turno);
   const libreKeys = new Set(libres.map((c) => clave(c.q, c.r)));
@@ -78,7 +80,7 @@ export function hayPalabraPosible(
   function dfs(c, prefijo) {
     const texto = prefijo + c.letra;
     if (!lemario.esPrefijo(texto)) return false;
-    if (texto.length >= minima && lemario.existe(texto)) return true;
+    if (texto.length >= minima && lemario.existe(texto) && !excluir.has(texto)) return true;
     if (texto.length >= maxLong) return false;
     const k = `${clave(c.q, c.r)}|${texto}`;
     if (fallidos.has(k)) return false;

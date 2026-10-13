@@ -460,3 +460,21 @@ test('generador local real: supervivencia con radio 3 mantiene siempre una palab
   }
   assert.equal(jugadas, 5);
 });
+
+test('garantía: una palabra larga ya jugada no cuenta y se repara con otra distinta', async () => {
+  const lem4 = cargarLemario('casa\nmesa\nsol\n');
+  const lemA = Object.create(lem4);
+  lemA.letraAleatoria = () => 'z';
+  const iaA = crearIaSimulada({ lemario: lemA, rng });
+  const fila = (letras, r) => [...letras].map((letra, q) => ({ q, r, letra }));
+  const p = crearPartida({
+    modo: 'supervivencia', lemario: lemA, ia: iaA, rng,
+    config: { ...GENERADOR, radioInicial: 1, longitudGarantizada: 4 },
+  });
+  p.tablero = tableroDesde([...fila('casa', 0), ...fila('xxxx', 1), ...fila('sol', 3)]);
+  p.palabrasUsadas.add('casa');
+  const res = await jugarPalabra(p, [{ q: 0, r: 3 }, { q: 1, r: 3 }, { q: 2, r: 3 }]);
+  assert.equal(res.aceptada, true);
+  // Solo "mesa" puede ser la palabra garantizada: "casa" ya estaba jugada.
+  assert.equal(hayPalabraPosible(p.tablero, cargarLemario('mesa\n'), { longitudMinima: 4 }), true);
+});

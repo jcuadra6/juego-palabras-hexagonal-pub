@@ -136,3 +136,17 @@ test('hayPalabraPosible: longitudMinima exige palabras más largas', () => {
   t.poner(3, 0, 'a');
   assert.equal(hayPalabraPosible(t, l, { longitudMinima: 4 }), true);
 });
+
+test('hayPalabraPosible: excluir descarta palabras ya usadas', () => {
+  const t = tableroDesde([{ q: 0, r: 0, letra: 's' }, { q: 1, r: 0, letra: 'o' }, { q: 2, r: 0, letra: 'l' }]);
+  const l = cargarLemario('sol\n');
+  assert.equal(hayPalabraPosible(t, l), true);
+  assert.equal(hayPalabraPosible(t, l, { excluir: new Set(['sol']) }), false);
+});
+
+test('hayPalabraPosible: lemario sin longitudMaxima (stub) sigue funcionando', () => {
+  const t = tableroDesde([{ q: 0, r: 0, letra: 's' }, { q: 1, r: 0, letra: 'o' }, { q: 2, r: 0, letra: 'l' }]);
+  const base = cargarLemario('sol\n');
+  const stub = { palabras: base.palabras, esPrefijo: (x) => base.esPrefijo(x), existe: (x) => base.existe(x) };
+  assert.equal(hayPalabraPosible(t, stub), true);
+});

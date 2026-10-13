@@ -13,7 +13,10 @@ export function asegurarPalabraLarga(tablero, lemario, config, rng, opciones = {
     LONGITUD_MINIMA,
     Math.min(cfg.longitudGarantizada, lemario.longitudMaxima, tablero.casillas.size),
   );
-  if (hayPalabraPosible(tablero, lemario, { incluirCongeladas: true, longitudMinima: n })) {
+  const excluir = opciones.excluir ?? new Set();
+  if (hayPalabraPosible(tablero, lemario, { incluirCongeladas: true, longitudMinima: n, excluir })) {
+    // Conserva la garantía mínima: una palabra posible en casillas libres (no congeladas).
+    garantizarPalabraPosible(tablero, lemario, rng);
     return true;
   }
 
@@ -23,8 +26,8 @@ export function asegurarPalabraLarga(tablero, lemario, config, rng, opciones = {
     rejilla.set(clave(c.q, c.r), { q: c.q, r: c.r, letra: c.letra, fija: false });
   }
   const colocaciones = buscarColocaciones(rejilla, lemario, {
-    min: n, max: n, limite: LIMITE_COLOCACIONES, rng,
-  });
+    min: n, max: Math.min(lemario.longitudMaxima, rejilla.size), limite: LIMITE_COLOCACIONES, rng,
+  }).filter((col) => !excluir.has(col.palabra));
   if (colocaciones.length === 0) {
     garantizarPalabraPosible(tablero, lemario, rng);
     return false;

@@ -117,7 +117,9 @@ async function jugar(partida, camino) {
     { generador, config },
   );
   const preferir = new Set(camino.map((p) => clave(p.q, p.r)));
-  generador.asegurarPalabraLarga(tablero, lemario, config, rng, { preferir });
+  generador.asegurarPalabraLarga(tablero, lemario, config, rng, {
+    preferir, excluir: partida.palabrasUsadas,
+  });
   tablero.turno += 1;
   partida.eventosActivos = partida.eventosActivos.filter((e) => e.hastaTurno > tablero.turno);
 

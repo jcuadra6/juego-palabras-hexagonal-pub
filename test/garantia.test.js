@@ -71,3 +71,37 @@ test('tablero de 4 casillas con longitudGarantizada 6: no lanza', () => {
   assert.doesNotThrow(() =>
     asegurarPalabraLarga(t, lem('cabeza', 'sol'), { longitudGarantizada: 6 }, crearRng(1)));
 });
+
+test('palabra larga solo en casillas congeladas: sigue habiendo palabra mínima libre', () => {
+  const t = tableroDesde([...linea([...'murcia'], 0, 0), ...linea([...'zzz'], 0, 4)]);
+  for (let q = 0; q < 6; q++) t.casilla(q, 0).congeladaHasta = 5;
+  const l = lem('murcia', 'sol');
+  assert.equal(hayPalabraPosible(t, l), false);
+  assert.equal(asegurarPalabraLarga(t, l, { longitudGarantizada: 6 }, crearRng(1)), true);
+  assert.equal(hayPalabraPosible(t, l), true);
+  assert.equal(letrasDe(t).slice(0, 6), 'murcia');
+});
+
+test('excluir: una palabra larga ya usada no cuenta y se repara con otra', () => {
+  const t = tableroDesde(linea([...'cabezas']));
+  const l = lem('cabeza', 'camisa');
+  const excluir = new Set(['cabeza']);
+  assert.equal(asegurarPalabraLarga(t, l, { longitudGarantizada: 6 }, crearRng(1), { excluir }), true);
+  assert.equal(letrasDe(t).slice(0, 6) === 'camisa' || letrasDe(t).slice(1, 7) === 'camisa', true);
+  assert.equal(hayPalabraPosible(t, l, { longitudMinima: 6, excluir }), true);
+});
+
+test('excluir: si todas las palabras largas están excluidas no repara con ninguna', () => {
+  const t = tableroDesde(linea([...'xxxxxx']));
+  const l = lem('cabeza', 'sol');
+  assert.equal(asegurarPalabraLarga(t, l, { longitudGarantizada: 6 }, crearRng(1),
+    { excluir: new Set(['cabeza']) }), false);
+  assert.ok(!letrasDe(t).includes('cabeza'));
+});
+
+test('la reparación busca longitudes entre N y la máxima del lemario', () => {
+  const t = tableroDesde(linea([...'xxxxxxxxxxxxxx']));
+  const l = lem('sol', 'sal', 'mal', 'abcdefghijkl');
+  assert.equal(asegurarPalabraLarga(t, l, { longitudGarantizada: 6 }, crearRng(1)), true);
+  assert.equal(hayPalabraPosible(t, l, { longitudMinima: 6 }), true);
+});
