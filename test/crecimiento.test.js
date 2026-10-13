@@ -151,3 +151,11 @@ test('crecer con generador: elegirLetras una vez con exactamente las posiciones 
     for (const k of nuevas) assert.equal(t.casillas.get(k).letra, 'x');
   }
 });
+
+test('crecer: un generador que devuelve un Map incompleto no deja letras indefinidas', () => {
+  const t = tableroBase();
+  const generador = { elegirLetras: () => new Map() };
+  crecer(t, 3, 'fuera', lemario, crearRng(2), { generador });
+  for (const c of t.casillas.values()) assert.equal(typeof c.letra, 'string');
+  for (const c of t.casillas.values()) assert.notEqual(c.letra, '');
+});

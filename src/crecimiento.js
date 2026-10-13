@@ -130,7 +130,7 @@ export function crecer(tablero, cantidad, modo, lemario, rng, opciones = {}) {
     const letras = generador.elegirLetras(tablero, nuevas, lemario, config, rng);
     for (const { q, r } of nuevas) {
       const c = tablero.casilla(q, r);
-      c.letra = letras.get(clave(q, r));
+      c.letra = letras.get(clave(q, r)) ?? lemario.letraAleatoria(rng);
       c.especial = marcaOpcional(rng);
     }
   }
