@@ -12,7 +12,7 @@ Este cambio introduce un **generador** que:
 
 - crea tableros iniciales grandes, con una trama de palabras reales del lemario entrelazadas, incluidas palabras largas;
 - al renovar letras, crecer o rellenar huecos, intenta primero encajar palabras del lemario y, si no, elige las letras que más combinaciones habilitan;
-- garantiza que en todo momento el tablero conserve al menos una palabra de N letras (N configurable);
+- garantiza que, justo después de regenerar el tablero en cada jugada, haya al menos una palabra de N letras sin usar (N configurable);
 - es configurable en tamaño, densidad, longitudes, prioridades y presupuesto.
 
 ## 2. Alcance
@@ -46,7 +46,7 @@ Un único bloque `GENERADOR` en `src/config.js`. Valores iniciales, ajustables:
 | `longitudSembrada` | `{ min: 5, max: 9 }` | Longitud de las palabras sembradas, recortada a lo que permitan el lemario y el tablero. |
 | `prioridadEncaje` | 0.7 | De 0 a 1: probabilidad de intentar encajar una palabra antes de elegir letras por puntuación. |
 | `mezclaPesos` | 0.5 | De 0 a 1: peso de las combinaciones con el lemario frente a la frecuencia del español al puntuar una letra. 0 reproduce las frecuencias actuales. |
-| `longitudGarantizada` | 6 | N: longitud de la palabra que siempre debe existir en el tablero. |
+| `longitudGarantizada` | 6 | N: longitud de la palabra que debe existir en el tablero tras cada regeneración. |
 | `presupuestoIntentos` | 2000 | Máximo de intentos por llamada al generador. Se mide en intentos, no en milisegundos, para que los tests sean deterministas. |
 
 Reglas de validación: `prioridadEncaje` y `mezclaPesos` fuera de `[0, 1]` se recortan al rango; `longitudSembrada.min` y `longitudGarantizada` nunca bajan de `LONGITUD_MINIMA`; una `densidad` desconocida usa `'media'`.
@@ -60,9 +60,9 @@ Reglas de validación: `prioridadEncaje` y `mezclaPesos` fuera de `[0, 1]` se re
 3. Bucle de siembra:
    - se elige una longitud entre `longitudSembrada.min` y `max`, con probabilidad proporcional a la longitud (las largas son más probables);
    - se busca en el lemario una palabra de esa longitud que se pueda colocar como un camino de casillas vecinas, sin repetir casilla dentro de la misma palabra. Una casilla vacía acepta cualquier letra y una ocupada exige que la letra coincida (eso crea el cruce);
-   - se prefieren las colocaciones que cruzan con palabras ya colocadas. En `'media'` cada palabra posterior a la primera debe cruzar con alguna anterior. En `'suave'` basta con un cruce en total. En `'densa'` se buscan colocaciones con dos o más cruces y se acepta una con uno si no hay otra;
+   - se prefieren las colocaciones que cruzan con palabras ya colocadas. En `'media'` cada palabra posterior a la primera debe cruzar con alguna anterior. En `'suave'` solo la segunda palabra debe cruzar con la primera y las demás se colocan libres. En `'densa'` se elige la colocación con más cruces y se acepta cualquiera con al menos uno, salvo en la primera palabra, que no necesita cruce;
    - el bucle termina al alcanzar la cobertura o al agotar `presupuestoIntentos`, y entonces se acepta lo conseguido.
-4. Las casillas sin cubrir se rellenan con el mismo procedimiento de letras de la sección 6 (pasos 2 a 4).
+4. Las casillas sin cubrir se rellenan con `elegirLetras` completo de la sección 6, incluido el paso de encaje.
 5. Al final se aplica la garantía de la sección 7.
 
 ## 6. Elección de letras
@@ -79,13 +79,13 @@ Se llama al renovar las casillas del camino jugado, al crecer y al rellenar huec
 
 ## 7. Garantía de palabra larga
 
-`asegurarPalabraLarga(tablero, lemario, config, rng, opciones)` devuelve `true` si, al terminar, existe una palabra formable de al menos `longitudGarantizada` letras.
+`asegurarPalabraLarga(tablero, lemario, config, rng, opciones)` devuelve `true` si, al terminar, existe una palabra formable de al menos `longitudGarantizada` letras que no esté en `opciones.excluir`.
 
-- Se comprueba con `hayPalabraPosible` ampliada con una longitud mínima.
+- Se comprueba con `hayPalabraPosible` ampliada con una longitud mínima y con `excluir`: un `Set` de palabras normalizadas (por defecto vacío) que no cuentan. `partida.js` pasa `palabrasUsadas`, de modo que una palabra larga ya jugada no vale como garantía ni se usa para reparar.
 - Si no existe, se siembra una sobre un camino de casillas existentes y no congeladas, eligiendo la palabra y el camino que cambien el mínimo de letras y prefiriendo las casillas recién regeneradas (`opciones.preferir`), para no deshacer otras palabras.
-- Si el lemario no tiene palabras de esa longitud, se usa la longitud máxima disponible, nunca por debajo de `LONGITUD_MINIMA`.
-- Si no se logra, queda como mínimo la garantía actual: al menos una palabra de la longitud mínima.
-- Se llama al terminar el tablero inicial y tras cada jugada aceptada.
+- La reparación busca palabras de longitud entre N y la máxima del lemario (o el número de casillas, si es menor). Si el lemario no tiene palabras tan largas, N baja a la longitud máxima disponible, nunca por debajo de `LONGITUD_MINIMA`.
+- Aunque la palabra larga ya exista, se mantiene además la garantía actual sobre casillas libres: al menos una palabra de la longitud mínima. Si no se logra la larga, queda al menos esa.
+- Se llama al terminar el tablero inicial y tras cada jugada aceptada, justo después de regenerar las letras. La garantía se cumple en ese momento: una marca `eliminar` o un evento posterior pueden quitar la palabra, y no se vuelve a comprobar hasta la jugada siguiente.
 
 ## 8. Interfaz y arquitectura
 
@@ -134,6 +134,6 @@ Todas con `rng` fijo y un lemario de prueba:
 
 1. Enfoque A: generador local que siembra palabras reales y puntúa letras, detrás de una interfaz fija. Se descartaron solo mejorar los pesos (no garantiza palabras largas) y una IA real (necesita servidor y es lenta y cara).
 2. Modelo mixto de letras: frecuencia más combinaciones con el lemario, configurable, con prioridad al encaje de palabras en los huecos.
-3. Para incentivar las palabras largas: sembrarlas y regenerar, más garantizar siempre una palabra de N letras. La longitud mínima válida y la puntuación no cambian.
+3. Para incentivar las palabras largas: sembrarlas y regenerar, más garantizar una palabra de N letras tras cada regeneración. La longitud mínima válida y la puntuación no cambian.
 4. Densidad configurable en tres niveles, con media por defecto.
 5. Tablero inicial por defecto de radio 3 (37 casillas).
