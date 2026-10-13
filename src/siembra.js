@@ -7,6 +7,7 @@ import { asegurarPalabraLarga } from './garantia.js';
 import { Tablero } from './tablero.js';
 
 const LIMITE_COLOCACIONES = 50;
+const MAX_FALLOS_SEGUIDOS = 50;
 
 function posicionesDisco(radio) {
   const celdas = [{ q: 0, r: 0 }];
@@ -14,16 +15,15 @@ function posicionesDisco(radio) {
   return celdas;
 }
 
-// Longitud entre min y max con probabilidad proporcional a la longitud.
-function sortearLongitud(min, max, rng) {
-  let total = 0;
-  for (let n = min; n <= max; n++) total += n;
+// Una longitud de la lista con probabilidad proporcional a la longitud.
+function sortearLongitud(longitudes, rng) {
+  const total = longitudes.reduce((suma, n) => suma + n, 0);
   let x = rng() * total;
-  for (let n = min; n <= max; n++) {
+  for (const n of longitudes) {
     x -= n;
     if (x < 0) return n;
   }
-  return max;
+  return longitudes[longitudes.length - 1];
 }
 
 const elegirAlAzar = (lista, rng) => lista[Math.floor(rng() * lista.length)];
@@ -55,15 +55,27 @@ export function sembrarPalabras(lemario, config, rng) {
   const maxLong = Math.min(cfg.longitudSembrada.max, lemario.longitudMaxima, rejilla.size);
   if (maxLong < LONGITUD_MINIMA) return { rejilla, palabras };
   const minLong = Math.min(cfg.longitudSembrada.min, maxLong);
+  // Solo longitudes con palabras en el lemario: las demás no pueden colocarse nunca.
+  const longitudes = [];
+  for (let n = minLong; n <= maxLong; n++) {
+    if (lemario.palabrasDeLongitud(n).length > 0) longitudes.push(n);
+  }
+  if (longitudes.length === 0) return { rejilla, palabras };
 
   let cubiertas = 0;
+  let fallosSeguidos = 0;
   for (let intento = 0; intento < cfg.presupuestoIntentos && cubiertas < objetivo; intento++) {
-    const longitud = sortearLongitud(minLong, maxLong, rng);
+    if (fallosSeguidos >= MAX_FALLOS_SEGUIDOS) break;
+    const longitud = sortearLongitud(longitudes, rng);
     const validas = buscarColocaciones(rejilla, lemario, {
       min: longitud, max: longitud, limite: LIMITE_COLOCACIONES, rng,
     }).filter((c) => c.asignadas >= 1 && c.cambios === 0);
     const elegida = elegirColocacion(validas, cfg.densidad, palabras.length, rng);
-    if (!elegida) continue;
+    if (!elegida) {
+      fallosSeguidos++;
+      continue;
+    }
+    fallosSeguidos = 0;
     elegida.camino.forEach((p, i) => {
       const celda = rejilla.get(clave(p.q, p.r));
       if (celda.letra === null) cubiertas++;

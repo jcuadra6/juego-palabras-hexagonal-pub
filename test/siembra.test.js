@@ -109,3 +109,12 @@ test('radioInicial 5 con lemario grande termina', () => {
   const lem = lemarioSintetico(5000, crearRng(5));
   completo(sembrarTablero(lem, { radioInicial: 5 }, crearRng(5)), numCasillas(5));
 });
+
+test('lemario con huecos de longitud: termina rápido con un tablero completo', () => {
+  const l = cargarLemario('sol\nsal\nmal\nabcdefghijkl\n');
+  const inicio = Date.now();
+  const t = sembrarTablero(
+    l, { ...GENERADOR, radioInicial: 3, longitudSembrada: { min: 5, max: 9 } }, crearRng(1));
+  assert.ok(Date.now() - inicio < 500);
+  completo(t, numCasillas(3));
+});
