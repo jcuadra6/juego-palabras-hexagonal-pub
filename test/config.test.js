@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  GENERADOR, MAX_NODOS_BUSQUEDA, normalizarConfig,
+  AYUDA, GENERADOR, MAX_NODOS_BUSQUEDA, normalizarAyuda, normalizarConfig,
 } from '../src/config.js';
 
 const copiaInicial = JSON.parse(JSON.stringify(GENERADOR));
@@ -62,4 +62,30 @@ test('normalizarConfig no muta GENERADOR ni la entrada', () => {
   salida.densidades.suave = 99;
   assert.deepStrictEqual(entrada, { longitudSembrada: { min: 1, max: 2 } });
   assert.deepStrictEqual(GENERADOR, copiaInicial);
+});
+
+test('valores iniciales de AYUDA', () => {
+  assert.deepStrictEqual(AYUDA, { maxPalabras: 100, maxNodos: 200000 });
+});
+
+test('normalizarAyuda() sin argumentos devuelve los valores por defecto', () => {
+  assert.deepStrictEqual(normalizarAyuda(), AYUDA);
+});
+
+test('normalizarAyuda trunca maxPalabras y sustituye valores menores que 1', () => {
+  assert.equal(normalizarAyuda({ maxPalabras: 0 }).maxPalabras, 100);
+  assert.equal(normalizarAyuda({ maxPalabras: 2.7 }).maxPalabras, 2);
+  assert.equal(normalizarAyuda({ maxPalabras: -5 }).maxPalabras, 100);
+});
+
+test('normalizarAyuda sustituye maxNodos no numérico o no finito', () => {
+  assert.equal(normalizarAyuda({ maxNodos: 'x' }).maxNodos, 200000);
+  assert.equal(normalizarAyuda({ maxNodos: Infinity }).maxNodos, 200000);
+  assert.equal(normalizarAyuda({ maxNodos: 50 }).maxNodos, 50);
+});
+
+test('normalizarAyuda tolera null y no numéricos, y no muta AYUDA', () => {
+  assert.deepStrictEqual(normalizarAyuda(null), { maxPalabras: 100, maxNodos: 200000 });
+  assert.deepStrictEqual(normalizarAyuda(5), { maxPalabras: 100, maxNodos: 200000 });
+  assert.deepStrictEqual(AYUDA, { maxPalabras: 100, maxNodos: 200000 });
 });

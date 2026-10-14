@@ -57,3 +57,23 @@ export function normalizarConfig(config) {
     presupuestoIntentos: entero(c.presupuestoIntentos, d.presupuestoIntentos, 1),
   };
 }
+
+// Parámetros del escáner de palabras posibles (panel de ayuda).
+export const AYUDA = {
+  maxPalabras: 100,
+  maxNodos: 200000,
+};
+
+const enteroOPorDefecto = (v, porDefecto) => {
+  const n = esNumero(v) ? Math.trunc(v) : porDefecto;
+  return n >= 1 ? n : porDefecto;
+};
+
+// Devuelve una configuración de ayuda nueva, completa y con valores válidos.
+export function normalizarAyuda(config) {
+  const c = config && typeof config === 'object' ? config : {};
+  return {
+    maxPalabras: enteroOPorDefecto(c.maxPalabras, AYUDA.maxPalabras),
+    maxNodos: enteroOPorDefecto(c.maxNodos, AYUDA.maxNodos),
+  };
+}
