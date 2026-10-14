@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="pagina">
   <main>
     <h1>Palabras hexagonales</h1>
 
@@ -27,6 +28,8 @@
       <label>Lemario propio
         <input type="file" id="lemario-archivo" accept=".txt,text/plain">
       </label>
+      <label class="interruptor"><input type="checkbox" id="chk-ayuda"> Panel de ayuda</label>
+      <label class="interruptor"><input type="checkbox" id="chk-develop"> Modo develop</label>
       <button type="button" id="nueva">Nueva partida</button>
     </section>
 
@@ -47,6 +50,12 @@
 
     <p id="mensaje" role="status"></p>
   </main>
+  <aside id="panel-ayuda" hidden>
+    <h2 id="ayuda-titulo">Palabras posibles (0)</h2>
+    <p id="ayuda-aviso" hidden>La lista puede estar incompleta.</p>
+    <ul id="ayuda-lista"></ul>
+  </aside>
+  </div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
