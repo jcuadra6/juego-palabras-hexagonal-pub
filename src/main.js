@@ -112,6 +112,7 @@ function renderAyuda() {
     const li = document.createElement('li');
     const boton = document.createElement('button');
     boton.type = 'button';
+    boton.dataset.palabra = p.palabra;
     boton.setAttribute('aria-pressed', String(p.palabra === a.seleccionada));
     const texto = document.createElement('span');
     texto.textContent = p.palabra.toUpperCase();
@@ -120,7 +121,11 @@ function renderAyuda() {
     boton.append(texto, puntos);
     boton.addEventListener('click', () => {
       a.seleccionada = alternarSeleccion(a.seleccionada, p.palabra);
-      renderAyuda();
+      // No se reconstruye la lista: así el botón conserva el foco del teclado.
+      for (const b of el.ayudaLista.querySelectorAll('button')) {
+        b.setAttribute('aria-pressed', String(b.dataset.palabra === a.seleccionada));
+      }
+      renderMarca();
     });
     li.appendChild(boton);
     el.ayudaLista.appendChild(li);
