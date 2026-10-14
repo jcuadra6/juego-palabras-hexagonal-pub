@@ -124,3 +124,57 @@ export function marcarCamino(svg, camino) {
     hex.classList.toggle('ultima', ultima !== undefined && hex.dataset.clave === clave(ultima.q, ultima.r));
   }
 }
+
+// Números de orden (desde 1) de cada casilla del camino; una casilla repetida acumula varios.
+export function numerarCamino(camino) {
+  const mapa = new Map();
+  camino.forEach((p, i) => {
+    const k = clave(p.q, p.r);
+    if (!mapa.has(k)) mapa.set(k, []);
+    mapa.get(k).push(i + 1);
+  });
+  return mapa;
+}
+
+// Selecciona "palabra"; si ya era la seleccionada, deselecciona.
+export function alternarSeleccion(seleccionada, palabra) {
+  return palabra === seleccionada ? null : palabra;
+}
+
+// Conserva la selección solo si la palabra sigue en la lista.
+export function reconciliarSeleccion(seleccionada, palabras) {
+  if (seleccionada === null) return null;
+  return palabras.some((p) => p.palabra === seleccionada) ? seleccionada : null;
+}
+
+// Atributo "points" de la línea que une los centros de las casillas del camino.
+export function puntosDeCamino(camino, tamano) {
+  return camino.map((p) => {
+    const { x, y } = aPixel(p.q, p.r, tamano);
+    return `${x.toFixed(3)},${y.toFixed(3)}`;
+  }).join(' ');
+}
+
+// Quita la capa de marca si existe.
+export function borrarMarca(svg) {
+  svg.querySelector('g.marca')?.remove();
+}
+
+// Dibuja (sustituyendo la anterior) la marca del camino: línea y números de orden.
+// Va al final del SVG para pintarse sobre el tablero y no captura punteros.
+export function dibujarMarca(svg, camino, tamano) {
+  borrarMarca(svg);
+  if (camino.length === 0) return;
+  const g = crear('g', { class: 'marca', 'pointer-events': 'none' });
+  g.appendChild(crear('polyline', {
+    class: 'marca-linea', fill: 'none', points: puntosDeCamino(camino, tamano),
+  }));
+  for (const [k, numeros] of numerarCamino(camino)) {
+    const { q, r } = coordenadasDeClave(k);
+    const { x, y } = aPixel(q, r, tamano);
+    const texto = crear('text', { class: 'marca-numero', x, y: y + tamano * 0.1 });
+    texto.textContent = numeros.join(',');
+    g.appendChild(texto);
+  }
+  svg.appendChild(g);
+}
