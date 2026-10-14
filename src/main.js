@@ -6,7 +6,9 @@ import { crearIaSimulada } from './ia.js';
 import { crearRng } from './rng.js';
 import {
   dibujarTablero, marcarCamino, extenderCamino, textoPalabra, estaCongelada,
+  alternarSeleccion, reconciliarSeleccion, dibujarMarca, borrarMarca,
 } from './ui.js';
+import { escanearPalabras } from './escaner.js';
 
 const TAMANO = 30;
 const TEMAS = ['halloween', 'navidad'];
@@ -36,10 +38,14 @@ const el = {
   svg: $('tablero'), modo: $('modo'), tema: $('tema'), archivo: $('lemario-archivo'),
   nueva: $('nueva'), puntos: $('puntos'), modoActual: $('modo-actual'), eventos: $('eventos'),
   objetivos: $('objetivos'), palabra: $('palabra'), enviar: $('enviar'), borrar: $('borrar'),
-  mensaje: $('mensaje'),
+  mensaje: $('mensaje'), pagina: document.querySelector('.pagina'), panelAyuda: $('panel-ayuda'),
+  ayudaTitulo: $('ayuda-titulo'), ayudaAviso: $('ayuda-aviso'), ayudaLista: $('ayuda-lista'),
+  chkAyuda: $('chk-ayuda'), chkDevelop: $('chk-develop'),
 };
 
-const estado = { lemario: null, temas: {}, partida: null, camino: [], ocupado: false, arrastre: null };
+const estado = { lemario: null, temas: {}, partida: null, camino: [], ocupado: false, arrastre: null,
+  ayuda: { panel: false, develop: false, palabras: [], truncado: false, seleccionada: null },
+};
 
 function mostrarMensaje(texto, clase = '') {
   el.mensaje.textContent = texto;
@@ -71,6 +77,62 @@ function renderPanel() {
   }
 }
 
+// Escanea las palabras posibles; solo con el panel encendido y con partida.
+function escanear() {
+  const a = estado.ayuda;
+  if (!a.panel || !estado.partida) {
+    a.palabras = [];
+    a.truncado = false;
+    a.seleccionada = null;
+    return;
+  }
+  const res = escanearPalabras(estado.partida.tablero, estado.lemario, { excluir: estado.partida.palabrasUsadas });
+  a.palabras = res.palabras;
+  a.truncado = res.truncado;
+  a.seleccionada = reconciliarSeleccion(a.seleccionada, a.palabras);
+}
+
+function renderMarca() {
+  const a = estado.ayuda;
+  const elegida = a.panel && a.develop && a.seleccionada
+    ? a.palabras.find((p) => p.palabra === a.seleccionada)
+    : null;
+  if (elegida) dibujarMarca(el.svg, elegida.camino, TAMANO);
+  else borrarMarca(el.svg);
+}
+
+function renderAyuda() {
+  const a = estado.ayuda;
+  el.panelAyuda.hidden = !a.panel;
+  el.pagina.classList.toggle('con-ayuda', a.panel);
+  el.ayudaTitulo.textContent = `Palabras posibles (${a.palabras.length})`;
+  el.ayudaAviso.hidden = !a.truncado;
+  el.ayudaLista.replaceChildren();
+  for (const p of a.palabras) {
+    const li = document.createElement('li');
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.dataset.palabra = p.palabra;
+    boton.setAttribute('aria-pressed', String(p.palabra === a.seleccionada));
+    const texto = document.createElement('span');
+    texto.textContent = p.palabra.toUpperCase();
+    const puntos = document.createElement('span');
+    puntos.textContent = p.puntos;
+    boton.append(texto, puntos);
+    boton.addEventListener('click', () => {
+      a.seleccionada = alternarSeleccion(a.seleccionada, p.palabra);
+      // No se reconstruye la lista: así el botón conserva el foco del teclado.
+      for (const b of el.ayudaLista.querySelectorAll('button')) {
+        b.setAttribute('aria-pressed', String(b.dataset.palabra === a.seleccionada));
+      }
+      renderMarca();
+    });
+    li.appendChild(boton);
+    el.ayudaLista.appendChild(li);
+  }
+  renderMarca();
+}
+
 function render() {
   const p = estado.partida;
   dibujarTablero(el.svg, p, TAMANO); // lee p.tablero cada vez: misiones lo reemplaza al reiniciar
@@ -80,6 +142,8 @@ function render() {
   el.enviar.disabled = !activa || estado.camino.length === 0;
   el.borrar.disabled = !activa || estado.camino.length === 0;
   renderPanel();
+  escanear();
+  renderAyuda(); // el SVG se vació al redibujar: la marca se dibuja de nuevo aquí
 }
 
 function cambiarCamino(camino) {
@@ -122,6 +186,7 @@ async function enviar() {
     estado.camino = [];
     let texto = `«${res.palabra}»: +${res.puntos} puntos, ${res.anadidas} casilla(s) nueva(s).`;
     if (res.evento) texto += ` Evento: ${TIPOS_EVENTO[res.evento.tipo]}.`;
+    if (res.tableroReiniciado) estado.ayuda.seleccionada = null;
     if (res.tableroReiniciado) texto += ' No quedaban palabras posibles: el tablero se ha reiniciado.';
     if (p.estado === 'victoria') mostrarMensaje(`¡Victoria! Misión cumplida con ${p.puntos} puntos.`, 'victoria');
     else if (p.estado === 'derrota') mostrarMensaje(`Derrota: no queda ninguna palabra posible en el tablero. Puntos: ${p.puntos}.`, 'derrota');
@@ -179,6 +244,7 @@ async function nuevaPartida() {
   estado.camino = [];
   estado.ocupado = false;
   estado.arrastre = null;
+  estado.ayuda.seleccionada = null;
   if (estado.partida.estado === 'derrota') mostrarMensaje('El lemario no permite formar ninguna palabra en el tablero inicial.', 'derrota');
   else mostrarMensaje('');
   render();
@@ -203,6 +269,15 @@ function conectarEventos() {
   document.addEventListener('pointercancel', () => { estado.arrastre = null; });
   el.enviar.addEventListener('click', enviar);
   el.borrar.addEventListener('click', () => { if (estado.partida && !estado.ocupado) cambiarCamino([]); });
+  el.chkAyuda.addEventListener('change', () => {
+    estado.ayuda.panel = el.chkAyuda.checked;
+    escanear();
+    renderAyuda();
+  });
+  el.chkDevelop.addEventListener('change', () => {
+    estado.ayuda.develop = el.chkDevelop.checked;
+    renderMarca();
+  });
   el.nueva.addEventListener('click', nuevaPartida);
   el.modo.addEventListener('change', nuevaPartida);
   el.tema.addEventListener('change', nuevaPartida);

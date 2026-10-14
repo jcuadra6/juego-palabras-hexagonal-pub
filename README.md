@@ -44,3 +44,37 @@ Los valores fuera de rango o de tipo erróneo se normalizan sin error (`normaliz
 Con el lemario de muestra (`data/lemario-muestra.txt`, unas 465 palabras) el generador funciona, pero hay pocas palabras largas y los cruces son escasos. Para ver tableros realmente enrevesados, con palabras largas que se cruzan, hace falta un lemario grande (decenas de miles de palabras).
 
 Para cargarlo, prepara un `.txt` con una palabra por línea (se normaliza a minúsculas y sin tildes, y se descartan las líneas no válidas) y elígelo en el control «Lemario propio» de la página; se empieza una partida nueva con él. Si el lemario no tiene palabras de la longitud pedida, el generador no falla: baja la trama y deja letras por frecuencia.
+
+## Panel de ayuda y modo develop
+
+Una ayuda para probar el generador: lista todas las palabras que se pueden formar ahora mismo en el tablero. Diseño: `docs/2026-10-13-panel-ayuda-design.md`.
+
+### Qué muestra la lista
+
+Con el interruptor «Panel de ayuda» encendido aparece, a la derecha del tablero (debajo en pantallas estrechas), el encabezado «Palabras posibles (N)» y una lista de botones, uno por palabra del lemario que se puede trazar por casillas vecinas con al menos 3 letras. Cada botón muestra la palabra y su puntuación (`longitud del camino × longitud del camino`). Se excluyen las palabras ya jugadas y las casillas congeladas.
+
+Orden: puntuación descendente y, a igualdad, orden alfabético por comparación de cadenas, sin localización.
+
+La lista se actualiza tras cada jugada, partida nueva o reinicio del tablero. Con el panel apagado no se escanea nada.
+
+La lista revela la letra real de las casillas ocultas por un evento: es una ayuda y se hace a propósito.
+
+Puede quedar incompleta: si se agota el presupuesto de nodos (`maxNodos`) o hay más de `maxPalabras` palabras, se conservan las mejores y se muestra el aviso «La lista puede estar incompleta.».
+
+### Los dos interruptores
+
+Ambos empiezan apagados y no se recuerdan entre sesiones.
+
+- **Panel de ayuda:** muestra u oculta el panel. Al apagarlo se borra la lista, la selección y la marca.
+- **Modo develop:** con él apagado, la lista es solo texto: pulsar una palabra la marca como seleccionada (`aria-pressed="true"`) pero no dibuja nada en el tablero. Con él encendido, la palabra seleccionada se marca en el tablero con una línea que une las casillas del camino y los números de orden de cada paso (una casilla repetida muestra varios números). Pulsar otra palabra sustituye la marca; pulsar de nuevo la seleccionada la borra. Apagar el modo develop también la borra.
+
+La selección se limpia sola si la palabra deja de estar en la lista (tras jugar, partida nueva o reinicio de tablero).
+
+### Configuración (`AYUDA` en `src/config.js`)
+
+| Parámetro | Valor inicial | Qué hace |
+|---|---|---|
+| `maxPalabras` | `100` | Máximo de palabras que conserva la lista (las de mayor puntuación). |
+| `maxNodos` | `200000` | Máximo de nodos que expande la búsqueda; al agotarse, la lista se marca como incompleta. |
+
+Los valores no numéricos, menores que 1 o no finitos usan los de por defecto, y los decimales se truncan (`normalizarAyuda`).
