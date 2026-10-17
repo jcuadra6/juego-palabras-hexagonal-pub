@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   puntosDeHexagono, calcularViewBox, extenderCamino,
-  numerarCamino, alternarSeleccion, reconciliarSeleccion, puntosDeCamino,
+  numerarCamino, alternarSeleccion, reconciliarSeleccion, puntosDeCamino, siguientePista,
 } from '../src/ui.js';
 import { tableroDesde } from '../src/tablero.js';
 
@@ -73,4 +73,14 @@ test('reconciliarSeleccion conserva la selección solo si sigue en la lista', ()
 test('puntosDeCamino une los centros de las casillas con tres decimales', () => {
   assert.equal(puntosDeCamino([{ q: 0, r: 0 }, { q: 1, r: 0 }], 10), '0.000,0.000 17.321,0.000');
   assert.equal(puntosDeCamino([], 10), '');
+});
+
+test('siguientePista recorre la lista en orden y vuelve a empezar', () => {
+  const lista = [{ palabra: 'casa' }, { palabra: 'sol' }, { palabra: 'ola' }];
+  assert.equal(siguientePista([], null), null);
+  assert.equal(siguientePista([], 'sol'), null);
+  assert.equal(siguientePista(lista, null), lista[0]);
+  assert.equal(siguientePista(lista, 'casa'), lista[1]);
+  assert.equal(siguientePista(lista, 'ola'), lista[0]);
+  assert.equal(siguientePista(lista, 'mesa'), lista[0]);
 });
