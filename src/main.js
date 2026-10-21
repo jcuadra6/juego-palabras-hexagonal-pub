@@ -6,7 +6,7 @@ import { crearIaSimulada } from './ia.js';
 import { crearRng } from './rng.js';
 import {
   dibujarTablero, marcarCamino, extenderCamino, textoPalabra, estaCongelada,
-  alternarSeleccion, reconciliarSeleccion, dibujarMarca, borrarMarca,
+  alternarSeleccion, reconciliarSeleccion, dibujarMarca, borrarMarca, siguientePista,
 } from './ui.js';
 import { escanearPalabras } from './escaner.js';
 
@@ -40,10 +40,11 @@ const el = {
   objetivos: $('objetivos'), palabra: $('palabra'), enviar: $('enviar'), borrar: $('borrar'),
   mensaje: $('mensaje'), pagina: document.querySelector('.pagina'), panelAyuda: $('panel-ayuda'),
   ayudaTitulo: $('ayuda-titulo'), ayudaAviso: $('ayuda-aviso'), ayudaLista: $('ayuda-lista'),
-  chkAyuda: $('chk-ayuda'), chkDevelop: $('chk-develop'),
+  chkAyuda: $('chk-ayuda'), chkDevelop: $('chk-develop'), pedirAyuda: $('pedir-ayuda'),
 };
 
 const estado = { lemario: null, temas: {}, partida: null, camino: [], ocupado: false, arrastre: null,
+  pista: null, // { palabra, camino } marcada por «Pedir ayuda»
   ayuda: { panel: false, develop: false, palabras: [], truncado: false, seleccionada: null },
 };
 
@@ -94,9 +95,10 @@ function escanear() {
 
 function renderMarca() {
   const a = estado.ayuda;
-  const elegida = a.panel && a.develop && a.seleccionada
+  // La pista se marca siempre y tiene prioridad sobre la selección del panel.
+  const elegida = estado.pista ?? (a.panel && a.develop && a.seleccionada
     ? a.palabras.find((p) => p.palabra === a.seleccionada)
-    : null;
+    : null);
   if (elegida) dibujarMarca(el.svg, elegida.camino, TAMANO);
   else borrarMarca(el.svg);
 }
@@ -141,6 +143,7 @@ function render() {
   const activa = p.estado === 'jugando' && !estado.ocupado;
   el.enviar.disabled = !activa || estado.camino.length === 0;
   el.borrar.disabled = !activa || estado.camino.length === 0;
+  el.pedirAyuda.disabled = !activa;
   renderPanel();
   escanear();
   renderAyuda(); // el SVG se vació al redibujar: la marca se dibuja de nuevo aquí
@@ -168,6 +171,7 @@ async function enviar() {
   estado.ocupado = true;
   el.enviar.disabled = true;
   el.borrar.disabled = true;
+  el.pedirAyuda.disabled = true;
   const camino = estado.camino;
   let res;
   try {
@@ -184,6 +188,7 @@ async function enviar() {
   estado.ocupado = false;
   if (res.aceptada) {
     estado.camino = [];
+    estado.pista = null;
     let texto = `«${res.palabra}»: +${res.puntos} puntos, ${res.anadidas} casilla(s) nueva(s).`;
     if (res.evento) texto += ` Evento: ${TIPOS_EVENTO[res.evento.tipo]}.`;
     if (res.tableroReiniciado) estado.ayuda.seleccionada = null;
@@ -196,6 +201,16 @@ async function enviar() {
     mostrarMensaje(MOTIVOS[res.motivo] ?? 'Palabra no válida.');
   }
   render();
+}
+
+// Marca en el tablero la palabra posible siguiente a la pista actual.
+function pedirAyuda() {
+  const p = estado.partida;
+  if (!p || estado.ocupado || p.estado !== 'jugando') return;
+  const { palabras } = escanearPalabras(p.tablero, estado.lemario, { excluir: p.palabrasUsadas });
+  estado.pista = siguientePista(palabras, estado.pista?.palabra ?? null);
+  mostrarMensaje(estado.pista ? '' : 'No hay palabras posibles ahora mismo.');
+  renderMarca();
 }
 
 function alPulsar(ev) {
@@ -245,6 +260,7 @@ async function nuevaPartida() {
   estado.ocupado = false;
   estado.arrastre = null;
   estado.ayuda.seleccionada = null;
+  estado.pista = null;
   if (estado.partida.estado === 'derrota') mostrarMensaje('El lemario no permite formar ninguna palabra en el tablero inicial.', 'derrota');
   else mostrarMensaje('');
   render();
@@ -268,6 +284,7 @@ function conectarEventos() {
   document.addEventListener('pointerup', alSoltar);
   document.addEventListener('pointercancel', () => { estado.arrastre = null; });
   el.enviar.addEventListener('click', enviar);
+  el.pedirAyuda.addEventListener('click', pedirAyuda);
   el.borrar.addEventListener('click', () => { if (estado.partida && !estado.ocupado) cambiarCamino([]); });
   el.chkAyuda.addEventListener('change', () => {
     estado.ayuda.panel = el.chkAyuda.checked;

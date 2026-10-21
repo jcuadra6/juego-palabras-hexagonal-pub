@@ -78,3 +78,13 @@ La selección se limpia sola si la palabra deja de estar en la lista (tras jugar
 | `maxNodos` | `200000` | Máximo de nodos que expande la búsqueda; al agotarse, la lista se marca como incompleta. |
 
 Los valores no numéricos, menores que 1 o no finitos usan los de por defecto, y los decimales se truncan (`normalizarAyuda`).
+
+## Pedir ayuda
+
+El botón «Pedir ayuda», junto a «Enviar» y «Borrar», marca en el tablero el camino de una palabra que se puede formar ahora mismo (línea y números de orden), esté o no encendido el panel o el modo develop. Diseño: `docs/2026-10-17-pedir-ayuda-design.md`.
+
+- La primera pulsación marca la palabra de mayor puntuación de la lista del escáner; cada pulsación siguiente pasa a la siguiente palabra y, tras la última, vuelve a la primera.
+- La pista tiene prioridad sobre la marca de la palabra seleccionada en el panel.
+- Se borra tras una jugada aceptada, una partida nueva o un reinicio del tablero; una jugada rechazada no la borra.
+- Si no hay palabras posibles, muestra «No hay palabras posibles ahora mismo.».
+- No penaliza la puntuación ni tiene límite de usos.

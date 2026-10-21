@@ -147,6 +147,13 @@ export function reconciliarSeleccion(seleccionada, palabras) {
   return palabras.some((p) => p.palabra === seleccionada) ? seleccionada : null;
 }
 
+// Palabra que sigue a "actual" en la lista (la primera si no hay o ya no está; vuelve a empezar tras la última).
+export function siguientePista(palabras, actual) {
+  if (palabras.length === 0) return null;
+  const i = palabras.findIndex((p) => p.palabra === actual);
+  return palabras[(i + 1) % palabras.length];
+}
+
 // Atributo "points" de la línea que une los centros de las casillas del camino.
 export function puntosDeCamino(camino, tamano) {
   return camino.map((p) => {
