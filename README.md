@@ -12,6 +12,16 @@ python3 -m http.server 8000
 
 y abrir <http://localhost:8000>.
 
+## Instalar en el móvil (PWA)
+
+El juego es una aplicación web instalable: tiene manifiesto (`manifest.webmanifest`), iconos (`iconos/`) y un service worker (`sw.js`) que guarda todo el código y los datos para jugar sin conexión.
+
+- Para instalarlo en el móvil hace falta servirlo por **https** (en el ordenador basta `localhost`). La forma más sencilla es GitHub Pages: en el repositorio, *Settings → Pages → Deploy from a branch*, rama `main`, carpeta `/ (root)`.
+- **Android (Chrome):** abre la dirección y pulsa *Instalar aplicación* (o menú ⋮ → *Añadir a pantalla de inicio*).
+- **iPhone (Safari):** botón *Compartir* → *Añadir a pantalla de inicio*.
+- El service worker pide primero a la red y, si no hay conexión, usa la copia guardada: con conexión siempre se ve la última versión.
+- Si añades un archivo nuevo en `src/`, `data/` o `iconos/`, añádelo también a `ARCHIVOS` en `sw.js` (un test lo comprueba). Al cambiar la lista, sube la versión de `CACHE`.
+
 ## Tests
 
 ```
