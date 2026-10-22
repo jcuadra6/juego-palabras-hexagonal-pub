@@ -331,4 +331,9 @@ async function iniciar() {
   await nuevaPartida();
 }
 
+// Instalable y sin conexión: registra el service worker (solo funciona por http(s), no con file://).
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Service worker no registrado:', e));
+}
+
 iniciar();
