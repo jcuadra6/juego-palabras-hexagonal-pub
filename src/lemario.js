@@ -1,4 +1,4 @@
-// Lemario: normalización, trie de palabras y utilidades aleatorias.
+// Lemario: normalización, trie de palabras, etiquetas de temática y utilidades aleatorias.
 import { LONGITUD_MINIMA, FRECUENCIAS_LETRAS } from './config.js';
 
 const MARCA_ENE = '\u0001';
@@ -14,10 +14,17 @@ export function normalizar(palabra) {
 
 const SOLO_LETRAS = /^[a-zñ]+$/;
 
+// Etiqueta de temática: minúsculas, sin tildes y con los espacios internos reducidos a uno.
+export function normalizarEtiqueta(etiqueta) {
+  return normalizar(String(etiqueta).trim()).replace(/\s+/g, ' ');
+}
+
 class Lemario {
-  constructor(palabras) {
+  // etiquetas: Map<etiqueta, string[]> con las palabras de cada temática.
+  constructor(palabras, etiquetas = new Map()) {
     this.raiz = new Map();
     this.palabras = palabras;
+    this.etiquetas = etiquetas;
     this._porLongitud = new Map();
     this._pares = new Map();
     this._longitudMaxima = 0;
@@ -40,6 +47,15 @@ class Lemario {
 
   get tamano() {
     return this.palabras.length;
+  }
+
+  // Etiquetas de temática disponibles, en orden alfabético.
+  get listaEtiquetas() {
+    return [...this.etiquetas.keys()].sort();
+  }
+
+  palabrasDeEtiqueta(etiqueta) {
+    return this.etiquetas.get(normalizarEtiqueta(etiqueta)) ?? [];
   }
 
   get longitudMaxima() {
@@ -96,11 +112,22 @@ class Lemario {
   }
 }
 
+// Una palabra por línea. Tras un «;» opcional van sus etiquetas de temática separadas por comas
+// («calabaza;halloween,otoño»). Una palabra sin etiquetas es general; si se repite, se juntan
+// sus etiquetas.
 export function cargarLemario(texto) {
   const unicas = new Set();
+  const etiquetas = new Map();
   for (const linea of texto.split(/\r?\n/)) {
-    const p = normalizar(linea.trim());
-    if (p.length >= LONGITUD_MINIMA && SOLO_LETRAS.test(p)) unicas.add(p);
+    const [palabra, resto = ''] = linea.split(';');
+    const p = normalizar(palabra.trim());
+    if (p.length < LONGITUD_MINIMA || !SOLO_LETRAS.test(p)) continue;
+    unicas.add(p);
+    for (const e of resto.split(',').map(normalizarEtiqueta)) {
+      if (e === '') continue;
+      if (!etiquetas.has(e)) etiquetas.set(e, new Set());
+      etiquetas.get(e).add(p);
+    }
   }
-  return new Lemario([...unicas]);
+  return new Lemario([...unicas], new Map([...etiquetas].map(([e, ps]) => [e, [...ps]])));
 }

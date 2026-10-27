@@ -17,7 +17,8 @@ test('el service worker guarda todo el código, los datos y los iconos', () => {
     ...readdirSync(new URL('src/', raiz)).map((f) => `src/${f}`),
     ...readdirSync(new URL('data/temas/', raiz)).map((f) => `data/temas/${f}`),
     ...readdirSync(new URL('iconos/', raiz)).map((f) => `iconos/${f}`),
-    'data/lemario-muestra.txt',
+    ...readdirSync(new URL('data/tematicas/', raiz)).map((f) => `data/tematicas/${f}`),
+    'data/lemario.txt',
   ];
   for (const f of necesarios) assert.ok(guardados.has(f), `falta ${f} en sw.js`);
 });

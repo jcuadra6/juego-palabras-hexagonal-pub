@@ -52,7 +52,6 @@ button:disabled { opacity: 0.5; cursor: default; }
 #mensaje.derrota { color: #ff6b6b; }
 #mensaje.victoria { color: #69db7c; }
 
-.controles .interruptor { flex-direction: row; align-items: center; gap: 0.35rem; font-size: 0.85rem; cursor: pointer; }
 #panel-ayuda { padding: 0.75rem 0.75rem 0.75rem 0; }
 #panel-ayuda h2 { font-size: 1.05rem; margin: 0 0 0.4rem; }
 #ayuda-aviso { margin: 0 0 0.4rem; font-size: 0.85rem; color: #ffd43b; }
@@ -78,4 +77,36 @@ button:disabled { opacity: 0.5; cursor: default; }
   .pagina.con-ayuda { grid-template-columns: minmax(0, 760px); }
   #panel-ayuda { padding: 0 0.75rem 0.75rem; }
   #ayuda-lista { max-height: 40vh; }
+}
+
+.cabecera { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+.cabecera h1, .cabecera h2 { margin: 0; }
+#ajustes {
+  background: var(--fondo); color: var(--texto); border: 1px solid var(--acento); border-radius: 10px;
+  width: min(36rem, 100vw - 1rem); max-height: calc(100dvh - 1rem); padding: 0; overflow-y: auto;
+}
+#ajustes::backdrop { background: rgb(0 0 0 / 0.6); }
+.ajustes { display: grid; gap: 0.9rem; padding: 1rem; }
+.ajustes h2 { font-size: 1.2rem; }
+.ajustes fieldset { border: 1px solid var(--casilla); border-radius: 8px; margin: 0; padding: 0.6rem 0.8rem 0.8rem; display: grid; gap: 0.5rem; justify-items: start; }
+.ajustes legend { font-weight: 700; padding: 0 0.3rem; }
+.ajustes p { margin: 0; }
+.ajustes .nota { font-size: 0.85rem; opacity: 0.85; }
+.ajustes code { background: var(--casilla); padding: 0 0.25rem; border-radius: 3px; }
+.ajustes .archivo { display: grid; gap: 0.25rem; font-size: 0.9rem; }
+.ajustes ul { margin: 0; padding-left: 1.2rem; }
+.ajustes .interruptor { display: flex; gap: 0.4rem; align-items: center; cursor: pointer; }
+.ajustes details { border: 1px solid var(--casilla); border-radius: 8px; padding: 0.6rem 0.8rem; display: grid; gap: 0.5rem; }
+.ajustes details[open] > * + * { margin-top: 0.5rem; }
+.ajustes summary { font-weight: 700; cursor: pointer; }
+.parametros { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 0.5rem 0.8rem; }
+.parametros label { display: grid; gap: 0.2rem; font-size: 0.85rem; }
+.parametros input, .parametros select {
+  font: inherit; background: var(--casilla); color: var(--texto);
+  border: 1px solid var(--acento); border-radius: 6px; padding: 0.3rem 0.5rem;
+}
+#ajustes-mensaje { min-height: 1.3rem; font-weight: 600; }
+#ajustes-mensaje.derrota { color: #ffd43b; }
+@media (max-width: 600px) {
+  #ajustes { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
 }

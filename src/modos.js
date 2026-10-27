@@ -1,5 +1,5 @@
 // Temas y misiones: validación de temas cargados desde JSON y progreso de los retos.
-import { normalizar } from './lemario.js';
+import { normalizar, normalizarEtiqueta } from './lemario.js';
 
 const TIPOS_EVENTO = ['eliminar', 'congelar', 'ocultar'];
 const MODOS = ['rellenar', 'fuera', 'mixto', null];
@@ -39,9 +39,11 @@ export function cargarTema(json) {
       throw new Error(`paleta.${c} inválido o ausente`);
     }
   }
-  if (!Array.isArray(json.palabrasObjetivo) || json.palabrasObjetivo.length === 0
-    || !json.palabrasObjetivo.every((p) => typeof p === 'string' && p !== '')) {
-    throw new Error('palabrasObjetivo inválido o ausente: se espera una lista no vacía de textos');
+  // Opcional: sin lista, las palabras objetivo salen de la etiqueta de temática (temaDeTematica).
+  if (json.palabrasObjetivo !== undefined && (!Array.isArray(json.palabrasObjetivo)
+    || json.palabrasObjetivo.length === 0
+    || !json.palabrasObjetivo.every((p) => typeof p === 'string' && p !== ''))) {
+    throw new Error('palabrasObjetivo inválido: se espera una lista no vacía de textos');
   }
   if (!Array.isArray(json.retos) || json.retos.length === 0) {
     throw new Error('retos inválido o ausente: se espera una lista no vacía');
@@ -56,8 +58,29 @@ export function cargarTema(json) {
     nombre: json.nombre,
     paleta: { ...json.paleta },
     eventos,
-    palabrasObjetivo: [...json.palabrasObjetivo],
+    palabrasObjetivo: json.palabrasObjetivo ? [...json.palabrasObjetivo] : null,
     retos,
+  };
+}
+
+const nombreDeEtiqueta = (e) => e.charAt(0).toUpperCase() + e.slice(1);
+
+// Nombre visible de una temática: el del tema con esa clave o la etiqueta con mayúscula inicial.
+export function nombreTematica(temas, etiqueta) {
+  const e = normalizarEtiqueta(etiqueta);
+  return temas[e]?.nombre ?? nombreDeEtiqueta(e);
+}
+
+// Tema de una partida de misiones para la temática elegida. Sin etiqueta («General») usa el tema
+// 'general' y cualquier palabra válida cuenta para el reto de tema. Con etiqueta usa el tema de
+// la misma clave si existe (si no, el general) y solo cuentan las palabras con esa etiqueta.
+export function temaDeTematica(temas, lemario, etiqueta) {
+  const e = etiqueta ? normalizarEtiqueta(etiqueta) : '';
+  if (e === '') return { ...temas.general, palabrasObjetivo: null };
+  return {
+    ...(temas[e] ?? temas.general),
+    nombre: nombreTematica(temas, e),
+    palabrasObjetivo: lemario.palabrasDeEtiqueta(e),
   };
 }
 
@@ -77,13 +100,14 @@ export function crearMision(tema) {
 
 export function actualizarMision(mision, resultado, tema) {
   const palabra = normalizar(resultado.palabra);
-  const objetivo = new Set(tema.palabrasObjetivo.map(normalizar));
+  // Sin palabras objetivo (temática general) cualquier palabra cuenta para el reto de tema.
+  const objetivo = tema.palabrasObjetivo ? new Set(tema.palabrasObjetivo.map(normalizar)) : null;
   for (const o of mision.objetivos) {
     if (o.cumplido) continue;
     if (o.tipo === 'longitud') {
       o.progreso = Math.max(o.progreso, palabra.length);
     } else if (o.tipo === 'tema') {
-      if (objetivo.has(palabra) && !o.vistas.includes(palabra)) {
+      if ((!objetivo || objetivo.has(palabra)) && !o.vistas.includes(palabra)) {
         o.vistas.push(palabra);
         o.progreso += 1;
       }
@@ -102,7 +126,7 @@ export function misionCumplida(mision) {
 export function avisosLemario(tema, lemario) {
   if (!tema) return [];
   const avisos = [];
-  const faltan = tema.palabrasObjetivo.filter((p) => !lemario.existe(p));
+  const faltan = (tema.palabrasObjetivo ?? []).filter((p) => !lemario.existe(p));
   if (faltan.length > 0) {
     avisos.push(`Faltan palabras del tema en el lemario: ${faltan.join(', ')}.`);
   }

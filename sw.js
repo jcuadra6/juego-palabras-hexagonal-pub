@@ -1,6 +1,6 @@
 // Service worker: guarda el juego para que funcione sin conexión.
 // Estrategia: primero la red (así se ven los cambios al momento) y, si falla, la copia guardada.
-const CACHE = 'palabras-v1';
+const CACHE = 'palabras-v2';
 const ARCHIVOS = [
   './',
   'index.html',
@@ -10,9 +10,14 @@ const ARCHIVOS = [
   'iconos/icono-512.png',
   'iconos/icono-maskable-512.png',
   'iconos/apple-touch-icon.png',
-  'data/lemario-muestra.txt',
+  'data/lemario.txt',
+  'data/tematicas/halloween.txt',
+  'data/tematicas/navidad.txt',
+  'data/temas/general.json',
   'data/temas/halloween.json',
   'data/temas/navidad.json',
+  'src/ajustes.js',
+  'src/almacen.js',
   'src/colocacion.js',
   'src/config.js',
   'src/crecimiento.js',

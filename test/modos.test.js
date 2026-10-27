@@ -2,11 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { cargarLemario, normalizar } from '../src/lemario.js';
-import { avisosLemario, cargarTema, crearMision, actualizarMision, misionCumplida } from '../src/modos.js';
+import {
+  avisosLemario, cargarTema, crearMision, actualizarMision, misionCumplida, nombreTematica, temaDeTematica,
+} from '../src/modos.js';
 
 const leer = (ruta) => readFileSync(new URL(ruta, import.meta.url), 'utf8');
 const lemario = cargarLemario(leer('../data/lemario-muestra.txt'));
-const TEMAS = ['halloween', 'navidad'];
+const TEMAS = ['general', 'halloween', 'navidad'];
+const TEMATICAS = ['halloween', 'navidad'];
 
 const temaMin = (retos) => cargarTema({
   nombre: 't',
@@ -16,16 +19,64 @@ const temaMin = (retos) => cargarTema({
   retos,
 });
 
+const temas = Object.fromEntries(TEMAS.map((t) => [t, cargarTema(JSON.parse(leer(`../data/temas/${t}.json`)))]));
+
 for (const nombre of TEMAS) {
-  test(`el tema ${nombre} es válido y sus palabras existen en el lemario`, () => {
-    const tema = cargarTema(JSON.parse(leer(`../data/temas/${nombre}.json`)));
+  test(`el tema ${nombre} es válido y sus palabras objetivo salen de la temática`, () => {
+    const tema = temas[nombre];
     assert.ok(tema.eventos.length >= 2);
-    assert.ok(tema.palabrasObjetivo.length >= 10);
     assert.ok(tema.retos.length >= 2);
-    for (const p of tema.palabrasObjetivo) assert.ok(lemario.existe(p), `falta ${p}`);
-    assert.ok(tema.palabrasObjetivo.some((p) => p.length >= 5));
+    assert.equal(tema.palabrasObjetivo, null);
   });
 }
+
+for (const nombre of TEMATICAS) {
+  test(`la temática incluida ${nombre} tiene palabras etiquetadas y su tema`, () => {
+    const l = cargarLemario(leer(`../data/tematicas/${nombre}.txt`));
+    assert.deepEqual(l.listaEtiquetas, [nombre]);
+    const palabras = l.palabrasDeEtiqueta(nombre);
+    assert.ok(palabras.length >= 20);
+    assert.equal(palabras.length, l.tamano); // todas las palabras llevan la etiqueta
+    assert.ok(palabras.some((p) => p.length >= 6));
+    assert.ok(temas[nombre], `falta data/temas/${nombre}.json`);
+  });
+}
+
+test('temaDeTematica: General usa el tema general y no limita las palabras', () => {
+  const l = cargarLemario('sol\ncasa;halloween');
+  const tema = temaDeTematica(temas, l, '');
+  assert.equal(tema.nombre, 'General');
+  assert.equal(tema.palabrasObjetivo, null);
+  assert.deepEqual(tema.retos, temas.general.retos);
+});
+
+test('temaDeTematica: una etiqueta con tema propio usa sus colores y sus palabras etiquetadas', () => {
+  const l = cargarLemario('sol\ncalabaza;halloween\nbruja;Halloween');
+  const tema = temaDeTematica(temas, l, 'halloween');
+  assert.equal(tema.nombre, 'Halloween');
+  assert.deepEqual(tema.paleta, temas.halloween.paleta);
+  assert.deepEqual(tema.palabrasObjetivo, ['calabaza', 'bruja']);
+});
+
+test('temaDeTematica: una etiqueta sin tema usa el general con el nombre de la etiqueta', () => {
+  const l = cargarLemario('sol\nplaya;verano\nola;verano');
+  const tema = temaDeTematica(temas, l, 'verano');
+  assert.equal(tema.nombre, 'Verano');
+  assert.deepEqual(tema.eventos, temas.general.eventos);
+  assert.deepEqual(tema.palabrasObjetivo, ['playa', 'ola']);
+  assert.equal(nombreTematica(temas, 'navidad'), 'Navidad');
+});
+
+test('reto tema: en General cuenta cualquier palabra distinta; con temática, solo las etiquetadas', () => {
+  const l = cargarLemario('sol\nmar\ncalabaza;halloween');
+  const progresoTema = (tema, palabras) => {
+    const m = crearMision(tema);
+    for (const palabra of palabras) actualizarMision(m, { palabra, casillasRegeneradas: 0 }, tema);
+    return m.objetivos.find((o) => o.tipo === 'tema').progreso;
+  };
+  assert.equal(progresoTema(temaDeTematica(temas, l, ''), ['sol', 'sol', 'mar']), 2);
+  assert.equal(progresoTema(temaDeTematica(temas, l, 'halloween'), ['sol', 'mar', 'calabaza']), 1);
+});
 
 test('cargarTema sin eventos lanza un error que nombra el campo', () => {
   assert.throws(() => cargarTema({ nombre: 'x' }), (e) => e instanceof Error && /eventos/.test(e.message));
@@ -39,6 +90,7 @@ test('cargarTema valida la forma de cada campo', () => {
   assert.throws(() => cargarTema(roto({ eventos: [{ tipo: 'eliminar', alcance: {}, duracion: 0, modoCrecimiento: null }] })), /radio/);
   assert.throws(() => cargarTema(roto({ eventos: [{ tipo: 'eliminar', alcance: { radio: 1 }, duracion: 0, modoCrecimiento: 'x' }] })), /modoCrecimiento/);
   assert.throws(() => cargarTema(roto({ palabrasObjetivo: [] })), /palabrasObjetivo/);
+  assert.throws(() => cargarTema(roto({ palabrasObjetivo: 'sol' })), /palabrasObjetivo/);
   assert.throws(() => cargarTema(roto({ retos: [{ tipo: 'otro', meta: 1 }] })), /retos/);
 });
 

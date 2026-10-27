@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalizar, cargarLemario } from '../src/lemario.js';
+import { normalizar, normalizarEtiqueta, cargarLemario } from '../src/lemario.js';
+import { prepararLemario } from '../scripts/preparar-lemario.mjs';
 import { crearRng } from '../src/rng.js';
 import { FRECUENCIAS_LETRAS } from '../src/config.js';
 
@@ -51,6 +52,37 @@ test('lemario de muestra tiene al menos 300 palabras', () => {
   const l = cargarLemario(readFileSync(new URL('../data/lemario-muestra.txt', import.meta.url), 'utf8'));
   assert.ok(l.tamano >= 300);
   for (const p of ['bruja', 'navidad', 'sol', 'ala', 'casa', 'perro', 'mesa']) assert.ok(l.existe(p), p);
+});
+
+test('cargarLemario lee etiquetas tras «;» y junta las de palabras repetidas', () => {
+  const l = cargarLemario('calabaza;Halloween, otoño\nbruja;halloween\ncasa\nCalabaza;fiesta\nxx;halloween\nsol;');
+  assert.equal(l.existe('calabaza'), true);
+  assert.equal(l.existe('casa'), true);
+  assert.equal(l.tamano, 4);
+  assert.deepEqual(l.listaEtiquetas, ['fiesta', 'halloween', 'otoño']);
+  assert.deepEqual(l.palabrasDeEtiqueta('HALLOWEEN'), ['calabaza', 'bruja']);
+  assert.deepEqual(l.palabrasDeEtiqueta('otono'), []);
+  assert.deepEqual(l.palabrasDeEtiqueta('fiesta'), ['calabaza']);
+  assert.deepEqual(cargarLemario('sol\nmar').listaEtiquetas, []);
+});
+
+test('normalizarEtiqueta', () => {
+  assert.equal(normalizarEtiqueta('  Día   de  Muertos '), 'dia de muertos');
+  assert.equal(normalizarEtiqueta('Otoño'), 'otoño');
+});
+
+test('prepararLemario descarta afijos, locuciones, nombres propios y siglas', () => {
+  const texto = 'a\na-\n-able\nab initio\nAbraham\nADN\nÁrbol\naba\nárbol\npingüino\nniño\nab\n';
+  assert.deepEqual(prepararLemario(texto), ['aba', 'arbol', 'niño', 'pinguino']);
+});
+
+test('el lemario por defecto es grande, ordenado y ya normalizado', () => {
+  const texto = readFileSync(new URL('../data/lemario.txt', import.meta.url), 'utf8');
+  const lineas = texto.trimEnd().split(/\r?\n/);
+  assert.ok(lineas.length > 80000);
+  assert.deepEqual(cargarLemario(texto).palabras, lineas);
+  for (const p of ['calabaza', 'bruja', 'murcielago', 'niño', 'pinguino', 'jugar']) assert.ok(lineas.includes(p), p);
+  assert.ok(!lineas.includes('abraham'));
 });
 
 test('palabrasDeLongitud devuelve las palabras de esa longitud en orden de inserción', () => {
