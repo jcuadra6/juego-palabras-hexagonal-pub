@@ -17,7 +17,10 @@
 <body>
   <div class="pagina">
   <main>
-    <h1>Palabras hexagonales</h1>
+    <header class="cabecera">
+      <h1>Palabras hexagonales</h1>
+      <button type="button" id="abrir-ajustes" aria-haspopup="dialog">⚙ Ajustes</button>
+    </header>
 
     <section class="controles">
       <label>Modo
@@ -26,17 +29,11 @@
           <option value="misiones">Misiones</option>
         </select>
       </label>
-      <label>Tema
-        <select id="tema">
-          <option value="halloween">Halloween</option>
-          <option value="navidad">Navidad</option>
+      <label>Temática
+        <select id="tematica">
+          <option value="">General</option>
         </select>
       </label>
-      <label>Lemario propio
-        <input type="file" id="lemario-archivo" accept=".txt,text/plain">
-      </label>
-      <label class="interruptor"><input type="checkbox" id="chk-ayuda"> Panel de ayuda</label>
-      <label class="interruptor"><input type="checkbox" id="chk-develop"> Modo develop</label>
       <button type="button" id="nueva">Nueva partida</button>
     </section>
 
@@ -64,6 +61,65 @@
     <ul id="ayuda-lista"></ul>
   </aside>
   </div>
+  <dialog id="ajustes" aria-labelledby="ajustes-titulo">
+    <form method="dialog" class="ajustes">
+      <header class="cabecera">
+        <h2 id="ajustes-titulo">Ajustes</h2>
+        <button type="submit" aria-label="Cerrar ajustes">✕</button>
+      </header>
+
+      <fieldset>
+        <legend>Lemario</legend>
+        <p id="lemario-estado"></p>
+        <label class="archivo">Cargar lemario propio (.txt, una palabra por línea)
+          <input type="file" id="lemario-archivo" accept=".txt,text/plain">
+        </label>
+        <button type="button" id="lemario-defecto">Volver al lemario por defecto</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Temáticas</legend>
+        <p class="nota">Un .txt con una palabra por línea y sus etiquetas tras «;», separadas por comas: <code>calabaza;halloween</code>. Esas palabras valen para los retos de su temática; el resto del lemario se puede jugar pero no cuenta para esos retos.</p>
+        <ul id="tematicas-lista"></ul>
+        <label class="archivo">Cargar lemario de temáticas
+          <input type="file" id="tematicas-archivo" accept=".txt,text/plain" multiple>
+        </label>
+        <button type="button" id="tematicas-quitar">Quitar las temáticas que he cargado</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Ayuda</legend>
+        <label class="interruptor"><input type="checkbox" id="chk-ayuda"> Mostrar lista de palabras posibles</label>
+      </fieldset>
+
+      <details>
+        <summary>Opciones de desarrollador</summary>
+        <label class="interruptor"><input type="checkbox" id="chk-develop"> Modo develop: marca en el tablero la palabra elegida en la lista</label>
+        <p class="nota">Los parámetros del generador se aplican en la próxima partida.</p>
+        <div class="parametros">
+          <label>Radio del tablero inicial <input type="number" data-ruta="generador.radioInicial" min="0" max="6" step="1"></label>
+          <label>Densidad
+            <select data-ruta="generador.densidad">
+              <option value="suave">Suave</option>
+              <option value="media">Media</option>
+              <option value="densa">Densa</option>
+            </select>
+          </label>
+          <label>Longitud mínima sembrada <input type="number" data-ruta="generador.longitudSembrada.min" min="3" max="15" step="1"></label>
+          <label>Longitud máxima sembrada <input type="number" data-ruta="generador.longitudSembrada.max" min="3" max="15" step="1"></label>
+          <label>Longitud garantizada <input type="number" data-ruta="generador.longitudGarantizada" min="3" max="12" step="1"></label>
+          <label>Prioridad de encaje (0 a 1) <input type="number" data-ruta="generador.prioridadEncaje" min="0" max="1" step="0.05"></label>
+          <label>Mezcla de pesos (0 a 1) <input type="number" data-ruta="generador.mezclaPesos" min="0" max="1" step="0.05"></label>
+          <label>Presupuesto de intentos <input type="number" data-ruta="generador.presupuestoIntentos" min="1" step="100"></label>
+          <label>Máximo de palabras en la lista <input type="number" data-ruta="ayuda.maxPalabras" min="1" step="10"></label>
+          <label>Máximo de nodos del escáner <input type="number" data-ruta="ayuda.maxNodos" min="1" step="10000"></label>
+        </div>
+        <button type="button" id="parametros-defecto">Restaurar valores por defecto</button>
+      </details>
+
+      <p id="ajustes-mensaje" role="status"></p>
+    </form>
+  </dialog>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

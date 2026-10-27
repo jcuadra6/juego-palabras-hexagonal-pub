@@ -1,0 +1,15 @@
+{
+  "nombre": "General",
+  "paleta": { "fondo": "#1f2933", "casilla": "#3e4c59", "texto": "#f5f7fa", "acento": "#4dabf7" },
+  "eventos": [
+    { "tipo": "eliminar", "alcance": { "radio": 1 }, "duracion": 0, "modoCrecimiento": null },
+    { "tipo": "congelar", "alcance": { "radio": 1 }, "duracion": 3, "modoCrecimiento": null },
+    { "tipo": "ocultar", "alcance": { "radio": 2 }, "duracion": 4, "modoCrecimiento": null },
+    { "tipo": "eliminar", "alcance": { "radio": 2 }, "duracion": 0, "modoCrecimiento": "fuera" }
+  ],
+  "retos": [
+    { "tipo": "tema", "meta": 5 },
+    { "tipo": "longitud", "meta": 7 },
+    { "tipo": "regenerar", "meta": 5 }
+  ]
+}

@@ -49,11 +49,41 @@ Todo el aleatorio sale de un `rng` inyectado: con la misma semilla, el mismo res
 
 Los valores fuera de rango o de tipo erróneo se normalizan sin error (`normalizarConfig`). Las casillas congeladas nunca se modifican.
 
-### Lemario grande
+### Lemario por defecto
 
-Con el lemario de muestra (`data/lemario-muestra.txt`, unas 465 palabras) el generador funciona, pero hay pocas palabras largas y los cruces son escasos. Para ver tableros realmente enrevesados, con palabras largas que se cruzan, hace falta un lemario grande (decenas de miles de palabras).
+El juego usa por defecto `data/lemario.txt`: 84.519 palabras sacadas del lemario de Teo Ruiz (<https://teoruiz.com/lemario/lemario-20101017.txt.gz>). Solo trae lemas: no hay plurales ni formas verbales («calabaza» vale, «calabazas» no). Se preparó con:
 
-Para cargarlo, prepara un `.txt` con una palabra por línea (se normaliza a minúsculas y sin tildes, y se descartan las líneas no válidas) y elígelo en el control «Lemario propio» de la página; se empieza una partida nueva con él. Si el lemario no tiene palabras de la longitud pedida, el generador no falla: baja la trama y deja letras por frecuencia.
+```
+node scripts/preparar-lemario.mjs lemario-20101017.txt > data/lemario.txt
+```
+
+El script descarta prefijos y sufijos (con guion), locuciones (con espacios) y nombres propios o siglas (empiezan por mayúscula), y normaliza el resto como el juego: minúsculas, sin tildes ni diéresis, con ñ, sin repetidas y en orden alfabético.
+
+`data/lemario-muestra.txt` (unas 465 palabras) ya no lo usa el juego; se queda para los tests.
+
+Para usar otro lemario, cárgalo en **Ajustes → Lemario** (un `.txt` con una palabra por línea; se descartan las líneas no válidas). Sustituye al de por defecto, se empieza una partida nueva, se recuerda en el dispositivo y «Volver al lemario por defecto» lo deshace. Si el lemario no tiene palabras de la longitud pedida, el generador no falla: baja la trama y deja letras por frecuencia.
+
+## Temáticas
+
+En el modo Misiones, el selector **Temática** ofrece «General» (por defecto) y una opción por cada etiqueta de los lemarios de temáticas.
+
+- **Formato:** un `.txt` con una palabra por línea y, tras un `;`, sus etiquetas separadas por comas: `calabaza;halloween,otoño`. Una palabra sin etiquetas es general. Las etiquetas no distinguen mayúsculas ni tildes.
+- Las palabras de los lemarios de temáticas se añaden al lemario aunque no estén en él.
+- **General:** cualquier palabra válida cuenta para el reto «palabras del tema».
+- **Con una etiqueta** (por ejemplo Halloween): se pueden jugar todas las palabras del lemario, pero solo las que llevan esa etiqueta cuentan para el reto de palabras del tema.
+- Si la etiqueta coincide con un tema de `data/temas/` (`halloween`, `navidad`), se usan sus colores, eventos y retos. Si no, los de `data/temas/general.json` con el nombre de la etiqueta.
+- El juego incluye `data/tematicas/halloween.txt` y `data/tematicas/navidad.txt`. Puedes cargar más en **Ajustes → Temáticas**; se recuerdan en el dispositivo y «Quitar las temáticas que he cargado» las borra (las incluidas se quedan). Un archivo con el mismo nombre sustituye al cargado antes.
+
+## Ajustes
+
+El botón **⚙ Ajustes** abre una pantalla (a pantalla completa en el móvil) con:
+
+- **Lemario:** cuál se usa, cargar uno propio o volver al de por defecto.
+- **Temáticas:** las etiquetas disponibles con su número de palabras, cargar lemarios de temáticas y quitar los cargados.
+- **Ayuda:** «Mostrar lista de palabras posibles» (el panel de ayuda).
+- **Opciones de desarrollador:** el modo develop y los parámetros de `GENERADOR` y `AYUDA` (ver tablas). Se normalizan como en `src/config.js` y se aplican en la próxima partida. «Restaurar valores por defecto» los devuelve a los de `src/config.js`.
+
+Los ajustes, el modo y la temática elegidos se recuerdan en el dispositivo (`localStorage`, `src/ajustes.js`); el lemario propio y las temáticas cargadas, en IndexedDB (`src/almacen.js`). En navegación privada, o si el navegador no deja guardar, todo funciona igual pero no se recuerda.
 
 ## Panel de ayuda y modo develop
 
@@ -61,7 +91,7 @@ Una ayuda para probar el generador: lista todas las palabras que se pueden forma
 
 ### Qué muestra la lista
 
-Con el interruptor «Panel de ayuda» encendido aparece, a la derecha del tablero (debajo en pantallas estrechas), el encabezado «Palabras posibles (N)» y una lista de botones, uno por palabra del lemario que se puede trazar por casillas vecinas con al menos 3 letras. Cada botón muestra la palabra y su puntuación (`longitud del camino × longitud del camino`). Se excluyen las palabras ya jugadas y las casillas congeladas.
+Con «Mostrar lista de palabras posibles» encendido en Ajustes aparece, a la derecha del tablero (debajo en pantallas estrechas), el encabezado «Palabras posibles (N)» y una lista de botones, uno por palabra del lemario que se puede trazar por casillas vecinas con al menos 3 letras. Cada botón muestra la palabra y su puntuación (`longitud del camino × longitud del camino`). Se excluyen las palabras ya jugadas y las casillas congeladas.
 
 Orden: puntuación descendente y, a igualdad, orden alfabético por comparación de cadenas, sin localización.
 
@@ -73,7 +103,7 @@ Puede quedar incompleta: si se agota el presupuesto de nodos (`maxNodos`) o hay 
 
 ### Los dos interruptores
 
-Ambos empiezan apagados y no se recuerdan entre sesiones.
+Están en la pantalla de ajustes: «Mostrar lista de palabras posibles» (en Ayuda) y «Modo develop» (en Opciones de desarrollador). Empiezan apagados y se recuerdan en el dispositivo.
 
 - **Panel de ayuda:** muestra u oculta el panel. Al apagarlo se borra la lista, la selección y la marca.
 - **Modo develop:** con él apagado, la lista es solo texto: pulsar una palabra la marca como seleccionada (`aria-pressed="true"`) pero no dibuja nada en el tablero. Con él encendido, la palabra seleccionada se marca en el tablero con una línea que une las casillas del camino y los números de orden de cada paso (una casilla repetida muestra varios números). Pulsar otra palabra sustituye la marca; pulsar de nuevo la seleccionada la borra. Apagar el modo develop también la borra.

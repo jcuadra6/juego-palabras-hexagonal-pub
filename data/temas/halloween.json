@@ -6,10 +6,6 @@
     { "tipo": "eliminar", "alcance": { "radio": 1 }, "duracion": 0, "modoCrecimiento": "fuera" },
     { "tipo": "congelar", "alcance": { "radio": 1 }, "duracion": 3, "modoCrecimiento": "mixto" }
   ],
-  "palabrasObjetivo": [
-    "calabaza", "fantasma", "bruja", "murcielago", "sombra", "vampiro",
-    "tumba", "miedo", "noche", "monstruo", "hechizo", "esqueleto"
-  ],
   "retos": [
     { "tipo": "tema", "meta": 3 },
     { "tipo": "longitud", "meta": 6 },
