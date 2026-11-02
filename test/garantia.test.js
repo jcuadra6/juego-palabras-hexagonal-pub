@@ -1,12 +1,53 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { asegurarPalabraLarga } from '../src/garantia.js';
+import { asegurarPalabraLarga, asegurarPalabraTematica } from '../src/garantia.js';
 import { tableroDesde, hayPalabraPosible } from '../src/tablero.js';
 import { cargarLemario } from '../src/lemario.js';
 import { crearRng } from '../src/rng.js';
 import { clave } from '../src/hex.js';
 
 const lem = (...p) => cargarLemario(p.join('\n'));
+
+// Disco de radio 1 (7 casillas) relleno con «z».
+const discoZ = () => tableroDesde([
+  { q: 0, r: 0 }, { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 }, { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
+].map((p) => ({ ...p, letra: 'z' })));
+
+test('asegurarPalabraTematica coloca una palabra de la temática si no hay ninguna', () => {
+  const t = discoZ();
+  assert.equal(asegurarPalabraTematica(t, ['luna', 'sol'], crearRng(3)), true);
+  assert.ok(hayPalabraPosible(t, lem('luna', 'sol')));
+});
+
+test('asegurarPalabraTematica no toca el tablero si ya hay una, y salta las usadas', () => {
+  const t = tableroDesde(linea(['s', 'o', 'l', 'z']));
+  const antes = foto(t);
+  assert.equal(asegurarPalabraTematica(t, ['sol', 'mar'], crearRng(1)), true);
+  assert.equal(cambiadas(antes, t).length, 0);
+  assert.equal(asegurarPalabraTematica(t, ['sol', 'mar'], crearRng(1), { excluir: new Set(['sol']) }), true);
+  assert.ok(hayPalabraPosible(t, lem('mar')));
+});
+
+test('asegurarPalabraTematica devuelve false si ya se jugaron todas o no hay temática', () => {
+  const t = discoZ();
+  assert.equal(asegurarPalabraTematica(t, ['sol'], crearRng(1), { excluir: new Set(['sol']) }), false);
+  assert.equal(asegurarPalabraTematica(t, [], crearRng(1)), false);
+  assert.equal(letrasDe(t), 'zzzzzzz');
+});
+
+test('asegurarPalabraTematica no cambia casillas congeladas', () => {
+  const t = tableroDesde(linea(['z', 'z', 'z', 'z', 'z']));
+  t.casilla(0, 0).congeladaHasta = 5;
+  t.casilla(1, 0).congeladaHasta = 5;
+  assert.equal(asegurarPalabraTematica(t, ['sol'], crearRng(2)), true);
+  assert.equal(t.casilla(0, 0).letra, 'z');
+  assert.equal(t.casilla(1, 0).letra, 'z');
+  assert.ok(['sol', 'los'].includes(letrasDe(t).slice(2)));
+  const corto = tableroDesde(linea(['z', 'z', 'z']));
+  corto.casilla(0, 0).congeladaHasta = 5;
+  assert.equal(asegurarPalabraTematica(corto, ['sol'], crearRng(2)), false); // no cabe en 2 libres
+  assert.equal(letrasDe(corto), 'zzz');
+});
 const linea = (letras, q0 = 0, r0 = 0) =>
   letras.map((letra, i) => ({ q: q0 + i, r: r0, letra }));
 const letrasDe = (t) => [...t.casillas.values()].map((c) => c.letra).join('');

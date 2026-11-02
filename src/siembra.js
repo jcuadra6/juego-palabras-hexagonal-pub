@@ -3,11 +3,13 @@ import { clave, anillo } from './hex.js';
 import { LONGITUD_MINIMA, normalizarConfig } from './config.js';
 import { buscarColocaciones } from './colocacion.js';
 import { elegirLetras } from './letras.js';
-import { asegurarPalabraLarga } from './garantia.js';
+import { asegurarPalabraLarga, lemarioTematico } from './garantia.js';
 import { Tablero } from './tablero.js';
 
 const LIMITE_COLOCACIONES = 50;
 const MAX_FALLOS_SEGUIDOS = 50;
+// Palabras de la temática que se intentan sembrar primero (las de la trama general las cruzan).
+export const PALABRAS_TEMATICAS_SEMBRADAS = 2;
 
 function posicionesDisco(radio) {
   const celdas = [{ q: 0, r: 0 }];
@@ -43,8 +45,32 @@ function elegirColocacion(validas, densidad, nPalabras, rng) {
   return elegirAlAzar(crucen.filter((c) => c.cruces === maximo), rng);
 }
 
+// Siembra primero hasta PALABRAS_TEMATICAS_SEMBRADAS palabras distintas de la temática.
+function sembrarTematicas(rejilla, tematicas, cfg, palabras, rng) {
+  const usadas = new Set();
+  for (let i = 0; i < PALABRAS_TEMATICAS_SEMBRADAS; i++) {
+    const lemario = lemarioTematico(tematicas, usadas);
+    const max = Math.min(lemario.longitudMaxima, rejilla.size);
+    if (max < LONGITUD_MINIMA) return 0;
+    const validas = buscarColocaciones(rejilla, lemario, {
+      min: LONGITUD_MINIMA, max, limite: LIMITE_COLOCACIONES, rng,
+    }).filter((c) => c.asignadas >= 1 && c.cambios === 0);
+    if (validas.length === 0) break;
+    const elegida = elegirAlAzar(validas, rng);
+    elegida.camino.forEach((p, j) => {
+      const celda = rejilla.get(clave(p.q, p.r));
+      celda.letra = elegida.palabra[j];
+      celda.fija = true;
+    });
+    usadas.add(elegida.palabra);
+    palabras.push({ palabra: elegida.palabra, camino: elegida.camino, tematica: true });
+  }
+  return [...rejilla.values()].filter((c) => c.letra !== null).length;
+}
+
 // Cada iteración del bucle es un intento: una llamada a buscarColocaciones.
-export function sembrarPalabras(lemario, config, rng) {
+// opciones.tematicas: palabras de la temática elegida (normalizadas) que se siembran primero.
+export function sembrarPalabras(lemario, config, rng, opciones = {}) {
   const cfg = normalizarConfig(config);
   const rejilla = new Map();
   for (const { q, r } of posicionesDisco(cfg.radioInicial)) {
@@ -62,7 +88,7 @@ export function sembrarPalabras(lemario, config, rng) {
   }
   if (longitudes.length === 0) return { rejilla, palabras };
 
-  let cubiertas = 0;
+  let cubiertas = opciones.tematicas?.length ? sembrarTematicas(rejilla, opciones.tematicas, cfg, palabras, rng) : 0;
   let fallosSeguidos = 0;
   for (let intento = 0; intento < cfg.presupuestoIntentos && cubiertas < objetivo; intento++) {
     if (fallosSeguidos >= MAX_FALLOS_SEGUIDOS) break;
@@ -87,9 +113,9 @@ export function sembrarPalabras(lemario, config, rng) {
   return { rejilla, palabras };
 }
 
-export function sembrarTablero(lemario, config, rng) {
+export function sembrarTablero(lemario, config, rng, opciones = {}) {
   const cfg = normalizarConfig(config);
-  const { rejilla } = sembrarPalabras(lemario, cfg, rng);
+  const { rejilla } = sembrarPalabras(lemario, cfg, rng, opciones);
   const tablero = new Tablero();
   const vacias = [];
   for (const celda of rejilla.values()) {
