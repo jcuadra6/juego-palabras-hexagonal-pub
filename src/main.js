@@ -46,7 +46,7 @@ const el = {
   mensaje: $('mensaje'), pagina: document.querySelector('.pagina'), panelAyuda: $('panel-ayuda'),
   ayudaTitulo: $('ayuda-titulo'), ayudaAviso: $('ayuda-aviso'), ayudaLista: $('ayuda-lista'),
   chkAyuda: $('chk-ayuda'), chkDevelop: $('chk-develop'), pedirAyuda: $('pedir-ayuda'),
-  ajustes: $('ajustes'), abrirAjustes: $('abrir-ajustes'), ajustesMensaje: $('ajustes-mensaje'),
+  ajustes: $('ajustes'), abrirAjustes: $('abrir-ajustes'), cerrarAjustes: $('cerrar-ajustes'), ajustesMensaje: $('ajustes-mensaje'),
   lemarioEstado: $('lemario-estado'), lemarioDefecto: $('lemario-defecto'),
   tematicasLista: $('tematicas-lista'), tematicasArchivo: $('tematicas-archivo'),
   tematicasQuitar: $('tematicas-quitar'), parametrosDefecto: $('parametros-defecto'),
@@ -431,6 +431,8 @@ function conectarAjustes() {
     mensajeAjustes('');
     el.ajustes.showModal();
   });
+  // Cierre explícito: no depende de enviar el formulario, que la validación del navegador puede bloquear.
+  el.cerrarAjustes.addEventListener('click', () => el.ajustes.close());
   el.chkAyuda.addEventListener('change', () => {
     estado.ajustes = { ...estado.ajustes, mostrarLista: el.chkAyuda.checked };
     estado.ayuda.panel = el.chkAyuda.checked;
