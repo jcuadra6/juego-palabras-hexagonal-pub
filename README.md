@@ -75,6 +75,7 @@ En el modo Misiones, el selector **Temática** ofrece «General» (por defecto) 
 ### Cómo se cargan (Ajustes → Temáticas)
 
 - **Cada temática por separado** (por defecto): en General y en Supervivencia solo vale el lemario general. Con una etiqueta vale el general más las palabras de esa etiqueta; las de otras temáticas no valen (en Halloween, «nochebuena» no se acepta).
+- **Solo la temática:** con una etiqueta solo valen las palabras de su lemario de temática; el tablero se genera solo con ellas (con pocas palabras, el resto de casillas se rellena con letras por frecuencia). En General y en Supervivencia sigue valiendo solo el lemario general.
 - **Todas juntas:** el general y todos los lemarios de temáticas se unen y sus palabras valen en cualquier partida. Los retos de tema siguen contando solo las palabras de la etiqueta elegida.
 
 La elección se recuerda y al cambiarla se empieza una partida nueva (`cargaTematicas` en `src/ajustes.js`; `lemarioDePartida` en `src/modos.js`).

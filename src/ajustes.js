@@ -3,6 +3,7 @@
 import { normalizarAyuda, normalizarConfig } from './config.js';
 
 export const CLAVE_AJUSTES = 'palabras-ajustes';
+export const CARGAS_TEMATICAS = ['separadas', 'exclusiva', 'juntas'];
 
 // Devuelve unos ajustes nuevos, completos y con valores válidos.
 export function normalizarAjustes(ajustes) {
@@ -10,8 +11,9 @@ export function normalizarAjustes(ajustes) {
   return {
     modo: a.modo === 'misiones' ? 'misiones' : 'supervivencia',
     tematica: typeof a.tematica === 'string' ? a.tematica : '', // '' = General
-    // 'separadas': cada lemario temático solo se usa en su temática; 'juntas': todos a la vez.
-    cargaTematicas: a.cargaTematicas === 'juntas' ? 'juntas' : 'separadas',
+    // 'separadas': cada lemario temático solo se usa en su temática (con el general);
+    // 'exclusiva': en una temática solo valen sus palabras; 'juntas': todos a la vez.
+    cargaTematicas: CARGAS_TEMATICAS.includes(a.cargaTematicas) ? a.cargaTematicas : 'separadas',
     mostrarLista: a.mostrarLista === true,
     develop: a.develop === true,
     generador: normalizarConfig(a.generador),

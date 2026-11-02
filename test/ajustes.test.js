@@ -23,8 +23,9 @@ test('normalizarAjustes() da los valores por defecto', () => {
   });
 });
 
-test('cargaTematicas solo admite separadas (por defecto) o juntas', () => {
+test('cargaTematicas solo admite separadas (por defecto), exclusiva o juntas', () => {
   assert.equal(normalizarAjustes({ cargaTematicas: 'juntas' }).cargaTematicas, 'juntas');
+  assert.equal(normalizarAjustes({ cargaTematicas: 'exclusiva' }).cargaTematicas, 'exclusiva');
   assert.equal(normalizarAjustes({ cargaTematicas: 'otra' }).cargaTematicas, 'separadas');
   assert.equal(conRuta(normalizarAjustes(), 'cargaTematicas', 'juntas').cargaTematicas, 'juntas');
 });
