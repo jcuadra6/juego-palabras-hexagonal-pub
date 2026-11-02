@@ -112,6 +112,14 @@ class Lemario {
   }
 }
 
+// Lemario de una temática jugada por separado: las palabras del general más las de la etiqueta,
+// que queda como única etiqueta. Las palabras ya vienen normalizadas de otro lemario.
+export function lemarioConEtiqueta(general, etiqueta, palabrasEtiqueta) {
+  const e = normalizarEtiqueta(etiqueta);
+  const palabras = [...new Set([...general.palabras, ...palabrasEtiqueta])];
+  return new Lemario(palabras, new Map([[e, [...palabrasEtiqueta]]]));
+}
+
 // Una palabra por línea. Tras un «;» opcional van sus etiquetas de temática separadas por comas
 // («calabaza;halloween,otoño»). Una palabra sin etiquetas es general; si se repite, se juntan
 // sus etiquetas.

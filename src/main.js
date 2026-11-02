@@ -1,7 +1,9 @@
 // Conecta la lógica del juego con la interfaz web (todo en el navegador, sin servidor).
 import { crearPartida, jugarPalabra } from './partida.js';
 import { cargarLemario } from './lemario.js';
-import { avisosLemario, cargarTema, nombreTematica, temaDeTematica } from './modos.js';
+import {
+  avisosLemario, cargarTema, claveDeTema, lemarioDePartida, nombreTematica, temaDeTematica,
+} from './modos.js';
 import { crearIaSimulada } from './ia.js';
 import { crearRng } from './rng.js';
 import {
@@ -17,6 +19,7 @@ const TEMAS = ['general', 'halloween', 'navidad'];
 const TEMATICAS = ['halloween', 'navidad']; // lemarios con etiquetas incluidos (data/tematicas)
 const GUARDADO_LEMARIO = 'lemario-propio'; // { nombre, texto }
 const GUARDADO_TEMATICAS = 'tematicas-propias'; // [{ nombre, texto }]
+const GUARDADO_ESTILOS = 'estilos-propios'; // [{ nombre, json }]: temas (.json) cargados en Ajustes
 const PALETA_NEUTRA = {
   fondo: '#1f2933', casilla: '#3e4c59', texto: '#f5f7fa', acento: '#4dabf7',
 };
@@ -50,6 +53,7 @@ const el = {
   lemarioEstado: $('lemario-estado'), lemarioDefecto: $('lemario-defecto'),
   tematicasLista: $('tematicas-lista'), tematicasArchivo: $('tematicas-archivo'),
   tematicasQuitar: $('tematicas-quitar'), parametrosDefecto: $('parametros-defecto'),
+  cargaTematicas: document.querySelectorAll('input[name="carga-tematicas"]'),
   parametros: document.querySelectorAll('[data-ruta]'),
 };
 
@@ -59,7 +63,11 @@ const almacenAjustes = (() => { try { return window.localStorage; } catch { retu
 const estado = { lemario: null, temas: {}, partida: null, camino: [], ocupado: false, arrastre: null,
   ajustes: leerAjustes(almacenAjustes),
   // Textos de los que sale el lemario activo: el general (por defecto o propio) y los de temáticas.
-  fuentes: { porDefecto: '', propio: null, tematicasIncluidas: [], tematicasPropias: [] },
+  fuentes: { porDefecto: '', propio: null, tematicasIncluidas: [], tematicasPropias: [], estilosPropios: [] },
+  temasIncluidos: {}, // los de data/temas; estado.temas les suma los estilos propios
+  lemarioGeneral: null, // solo el general (propio o por defecto)
+  lemarioCompleto: null, // el general con todos los lemarios de temáticas
+  lemariosPorEtiqueta: new Map(), // caché de lemarios de temáticas separadas
   pista: null, // { palabra, camino } marcada por «Pedir ayuda»
   ayuda: { panel: false, develop: false, palabras: [], truncado: false, seleccionada: null },
 };
@@ -273,6 +281,7 @@ async function nuevaPartida() {
     mostrarMensaje('No hay temas cargados: usa supervivencia.', 'derrota');
     return;
   }
+  estado.lemario = lemarioActivo(modo === 'misiones' ? el.tematica.value : '');
   const tema = modo === 'misiones' ? temaDeTematica(estado.temas, estado.lemario, el.tematica.value) : null;
   aplicarPaleta(tema ? tema.paleta : PALETA_NEUTRA);
   const rng = crearRng(Date.now());
@@ -290,38 +299,68 @@ async function nuevaPartida() {
   render();
 }
 
-// Rehace el lemario activo: el general (propio o por defecto) más los lemarios de temáticas.
+// Lemario de una partida con esa etiqueta ('' = General o Supervivencia), según el modo de carga.
+function lemarioActivo(etiqueta) {
+  const separadas = estado.ajustes.cargaTematicas === 'separadas';
+  const clave = separadas ? etiqueta : '*';
+  if (!estado.lemariosPorEtiqueta.has(clave)) {
+    estado.lemariosPorEtiqueta.set(clave, lemarioDePartida({
+      general: estado.lemarioGeneral, completo: estado.lemarioCompleto, etiqueta, separadas,
+    }));
+  }
+  return estado.lemariosPorEtiqueta.get(clave);
+}
+
+// Rehace los lemarios: el general (propio o por defecto) y el completo, con todas las temáticas.
 function reconstruirLemario() {
   const f = estado.fuentes;
-  const textos = [
-    f.propio ? f.propio.texto : f.porDefecto, ...f.tematicasIncluidas, ...f.tematicasPropias.map((t) => t.texto),
-  ];
-  const lemario = cargarLemario(textos.join('\n'));
-  if (lemario.palabras.length === 0) throw new Error('el lemario no tiene palabras válidas');
-  estado.lemario = lemario;
+  const general = cargarLemario(f.propio ? f.propio.texto : f.porDefecto);
+  if (general.palabras.length === 0) throw new Error('el lemario no tiene palabras válidas');
+  const tematicas = [...f.tematicasIncluidas, ...f.tematicasPropias.map((t) => t.texto)];
+  estado.lemarioGeneral = general;
+  estado.lemarioCompleto = cargarLemario([f.propio ? f.propio.texto : f.porDefecto, ...tematicas].join('\n'));
+  estado.lemariosPorEtiqueta.clear();
+  estado.lemario = lemarioActivo(el.modo.value === 'misiones' ? estado.ajustes.tematica : '');
   renderTematicas();
+}
+
+// Temas disponibles: los incluidos más los estilos propios (un estilo propio sustituye al incluido).
+function reconstruirTemas() {
+  estado.temas = { ...estado.temasIncluidos };
+  for (const { json } of estado.fuentes.estilosPropios) estado.temas[claveDeTema(json)] = cargarTema(json);
 }
 
 // Opciones del selector de temática y lista de temáticas de la pantalla de ajustes.
 function renderTematicas() {
-  const etiquetas = estado.lemario.listaEtiquetas;
+  const completo = estado.lemarioCompleto;
+  const etiquetas = completo.listaEtiquetas;
   const nombre = (e) => nombreTematica(estado.temas, e);
   el.tematica.replaceChildren(new Option('General', ''), ...etiquetas.map((e) => new Option(nombre(e), e)));
   el.tematica.value = etiquetas.includes(estado.ajustes.tematica) ? estado.ajustes.tematica : '';
   const filas = etiquetas.length > 0
-    ? etiquetas.map((e) => `${nombre(e)}: ${contarPalabras(estado.lemario.palabrasDeEtiqueta(e).length)}`)
+    ? etiquetas.map((e) => `${nombre(e)}: ${contarPalabras(completo.palabrasDeEtiqueta(e).length)}, ${estiloDe(e)}`)
     : ['Ninguna: solo General.'];
+  // Estilos propios sin lemario de su etiqueta: aún no se pueden elegir.
+  for (const { json } of estado.fuentes.estilosPropios) {
+    const e = claveDeTema(json);
+    if (e !== 'general' && !etiquetas.includes(e)) filas.push(`${nombre(e)}: estilo propio, falta un lemario con la etiqueta «${e}»`);
+  }
   el.tematicasLista.replaceChildren(...filas.map((texto) => Object.assign(document.createElement('li'), { textContent: texto })));
-  const propias = estado.fuentes.tematicasPropias;
+  const propias = [...estado.fuentes.tematicasPropias, ...estado.fuentes.estilosPropios];
   el.tematicasQuitar.disabled = propias.length === 0;
   el.tematicasQuitar.textContent = propias.length === 0
     ? 'Quitar las temáticas que he cargado'
     : `Quitar las temáticas que he cargado (${propias.map((t) => t.nombre).join(', ')})`;
 }
 
+function estiloDe(etiqueta) {
+  if (estado.fuentes.estilosPropios.some(({ json }) => claveDeTema(json) === etiqueta)) return 'estilo propio';
+  return estado.temasIncluidos[etiqueta] ? 'estilo incluido' : 'estilo general';
+}
+
 function renderLemarioEstado() {
   const { propio } = estado.fuentes;
-  const total = `Total con temáticas: ${contarPalabras(estado.lemario.palabras.length)}.`;
+  const total = `${contarPalabras(estado.lemarioGeneral.palabras.length)}.`;
   el.lemarioEstado.textContent = propio ? `En uso: tu lemario «${propio.nombre}». ${total}` : `En uso: el lemario por defecto. ${total}`;
   el.lemarioDefecto.disabled = !propio;
 }
@@ -331,6 +370,7 @@ function renderAjustes() {
   el.chkAyuda.checked = estado.ajustes.mostrarLista;
   el.chkDevelop.checked = estado.ajustes.develop;
   for (const input of el.parametros) input.value = String(leerRuta(estado.ajustes, input.dataset.ruta));
+  for (const radio of el.cargaTematicas) radio.checked = radio.value === estado.ajustes.cargaTematicas;
   renderLemarioEstado();
 }
 
@@ -385,43 +425,76 @@ async function alCargarLemarioPropio() {
   }
 }
 
+// Lee un estilo de temática (.json con nombre, paleta, eventos y retos, como data/temas/).
+async function leerArchivoEstilo(archivo) {
+  let json;
+  try {
+    json = JSON.parse(await archivo.text());
+  } catch {
+    throw new Error('no es un JSON válido');
+  }
+  cargarTema(json); // valida; lanza un error que nombra el campo que falla
+  if (claveDeTema(json) === '') throw new Error('falta el nombre o la etiqueta');
+  return { nombre: archivo.name, json };
+}
+
 async function alCargarTematicas() {
   const archivos = [...el.tematicasArchivo.files];
   el.tematicasArchivo.value = '';
-  const nuevas = [];
+  const lemarios = [];
+  const estilos = [];
   const avisos = [];
   for (const f of archivos) {
+    if (/\.json$/i.test(f.name)) {
+      try {
+        estilos.push(await leerArchivoEstilo(f));
+      } catch (e) {
+        avisos.push(`el estilo «${f.name}» no es válido: ${e.message}.`);
+      }
+      continue;
+    }
     const { nombre, texto, lemario } = await leerArchivoLemario(f);
-    if (lemario.etiquetas.size === 0) avisos.push(`«${nombre}» no tiene ninguna palabra con etiqueta.`);
-    else nuevas.push({ nombre, texto, etiquetas: lemario.listaEtiquetas });
+    if (lemario.etiquetas.size === 0) avisos.push(`«${nombre}» no tiene ninguna palabra con etiqueta (formato: palabra;etiqueta).`);
+    else lemarios.push({ nombre, texto, etiquetas: lemario.listaEtiquetas });
   }
-  if (nuevas.length === 0) {
-    if (avisos.length > 0) mensajeAjustes(`No se ha cargado nada. ${avisos.join(' ')} Formato: palabra;etiqueta`, 'derrota');
+  if (lemarios.length === 0 && estilos.length === 0) {
+    if (avisos.length > 0) mensajeAjustes(`No se ha cargado nada: ${avisos.join(' ')}`, 'derrota');
     return;
   }
-  // Un archivo con el mismo nombre sustituye al cargado antes.
-  const otras = estado.fuentes.tematicasPropias.filter((t) => !nuevas.some((n) => n.nombre === t.nombre));
-  estado.fuentes.tematicasPropias = [...otras, ...nuevas.map(({ nombre, texto }) => ({ nombre, texto }))];
+  // Un lemario con el mismo nombre de archivo, o un estilo de la misma etiqueta, sustituye al anterior.
+  const f = estado.fuentes;
+  f.tematicasPropias = [
+    ...f.tematicasPropias.filter((t) => !lemarios.some((n) => n.nombre === t.nombre)),
+    ...lemarios.map(({ nombre, texto }) => ({ nombre, texto })),
+  ];
+  f.estilosPropios = [
+    ...f.estilosPropios.filter((t) => !estilos.some((n) => claveDeTema(n.json) === claveDeTema(t.json))),
+    ...estilos,
+  ];
+  reconstruirTemas();
   reconstruirLemario();
   renderLemarioEstado();
-  if (!(await guardar(GUARDADO_TEMATICAS, estado.fuentes.tematicasPropias))) {
-    avisos.unshift('no se han podido guardar en este dispositivo.');
-  }
-  const nombres = [...new Set(nuevas.flatMap((n) => n.etiquetas))].map((e) => nombreTematica(estado.temas, e));
-  mensajeAjustes(
-    `Temáticas cargadas: ${nombres.join(', ')}. Elígelas en «Temática» con el modo Misiones.${avisos.map((a) => ` Aviso: ${a}`).join('')}`,
-    avisos.length > 0 ? 'derrota' : '',
-  );
+  const guardados = await Promise.all([guardar(GUARDADO_TEMATICAS, f.tematicasPropias), guardar(GUARDADO_ESTILOS, f.estilosPropios)]);
+  if (guardados.includes(false)) avisos.unshift('no se han podido guardar en este dispositivo.');
+  const etiquetas = new Set([...lemarios.flatMap((n) => n.etiquetas), ...estilos.map((n) => claveDeTema(n.json))]);
+  const listas = [...etiquetas].filter((e) => estado.lemarioCompleto.listaEtiquetas.includes(e));
+  const sinLemario = [...etiquetas].filter((e) => !listas.includes(e) && e !== 'general');
+  const partes = [];
+  if (listas.length > 0) partes.push(`Ya puedes elegir en «Temática» (modo Misiones): ${listas.map((e) => nombreTematica(estado.temas, e)).join(', ')}.`);
+  if (sinLemario.length > 0) partes.push(`Falta un lemario con la etiqueta ${sinLemario.map((e) => `«${e}»`).join(', ')} para poder elegirla.`);
+  mensajeAjustes(`${partes.join(' ')}${avisos.map((a) => ` Aviso: ${a}`).join('')}`, avisos.length > 0 ? 'derrota' : '');
+  // Si se cambió el estilo o las palabras de la temática en juego, la partida empieza de nuevo.
+  if (el.modo.value === 'misiones' && etiquetas.has(el.tematica.value)) await nuevaPartida();
 }
 
 async function alQuitarTematicas() {
   estado.fuentes.tematicasPropias = [];
-  const tematica = el.tematica.value;
+  estado.fuentes.estilosPropios = [];
+  reconstruirTemas();
   reconstruirLemario();
   renderLemarioEstado();
-  await borrarGuardado(GUARDADO_TEMATICAS);
-  // Si la temática elegida ya no existe, la partida en curso no tiene sentido: se empieza otra.
-  if (tematica !== el.tematica.value && el.modo.value === 'misiones') await nuevaPartida();
+  await Promise.all([borrarGuardado(GUARDADO_TEMATICAS), borrarGuardado(GUARDADO_ESTILOS)]);
+  if (el.modo.value === 'misiones') await nuevaPartida();
   mensajeAjustes('Quitadas las temáticas que habías cargado; quedan las incluidas en el juego.');
 }
 
@@ -456,8 +529,8 @@ function conectarAjustes() {
     });
   }
   el.parametrosDefecto.addEventListener('click', () => {
-    const { modo, tematica, mostrarLista, develop } = estado.ajustes;
-    estado.ajustes = normalizarAjustes({ modo, tematica, mostrarLista, develop });
+    const { modo, tematica, cargaTematicas, mostrarLista, develop } = estado.ajustes;
+    estado.ajustes = normalizarAjustes({ modo, tematica, cargaTematicas, mostrarLista, develop });
     guardarAjustesActuales();
     renderAjustes();
     mensajeAjustes('Valores por defecto restaurados. Se aplicarán en la próxima partida.');
@@ -469,6 +542,17 @@ function conectarAjustes() {
     mensajeAjustes('Vuelves a usar el lemario por defecto. Partida nueva empezada.');
   });
   el.tematicasArchivo.addEventListener('change', alCargarTematicas);
+  for (const radio of el.cargaTematicas) {
+    radio.addEventListener('change', async () => {
+      if (!radio.checked) return;
+      estado.ajustes = { ...estado.ajustes, cargaTematicas: radio.value };
+      guardarAjustesActuales();
+      await nuevaPartida();
+      mensajeAjustes(radio.value === 'juntas'
+        ? 'Todas las temáticas juntas: sus palabras valen en cualquier partida. Partida nueva empezada.'
+        : 'Cada temática por separado: sus palabras solo valen en su temática. Partida nueva empezada.');
+    });
+  }
   el.tematicasQuitar.addEventListener('click', alQuitarTematicas);
 }
 
@@ -507,15 +591,27 @@ async function iniciar() {
     ]);
     estado.fuentes.porDefecto = texto;
     estado.fuentes.tematicasIncluidas = resto.slice(0, TEMATICAS.length);
-    TEMAS.forEach((t, i) => { estado.temas[t] = cargarTema(resto[TEMATICAS.length + i]); });
+    TEMAS.forEach((t, i) => { estado.temasIncluidos[t] = cargarTema(resto[TEMATICAS.length + i]); });
   } catch (e) {
     mostrarMensaje(`No se pudieron cargar los datos: ${e.message}. Sirve la carpeta por http (ver README).`, 'derrota');
     return;
   }
-  // Lo guardado en el dispositivo: lemario propio y temáticas cargadas.
-  const [propio, tematicas] = await Promise.all([leerGuardado(GUARDADO_LEMARIO), leerGuardado(GUARDADO_TEMATICAS)]);
+  // Lo guardado en el dispositivo: lemario propio, temáticas y estilos cargados.
+  const [propio, tematicas, estilos] = await Promise.all([
+    leerGuardado(GUARDADO_LEMARIO), leerGuardado(GUARDADO_TEMATICAS), leerGuardado(GUARDADO_ESTILOS),
+  ]);
   if (propio && typeof propio.texto === 'string') estado.fuentes.propio = propio;
   if (Array.isArray(tematicas)) estado.fuentes.tematicasPropias = tematicas.filter((t) => t && typeof t.texto === 'string');
+  if (Array.isArray(estilos)) {
+    estado.fuentes.estilosPropios = estilos.filter((t) => {
+      try {
+        return claveDeTema(cargarTema(t.json)) !== '';
+      } catch {
+        return false; // un estilo guardado dañado se ignora
+      }
+    });
+  }
+  reconstruirTemas();
   try {
     reconstruirLemario();
   } catch {
