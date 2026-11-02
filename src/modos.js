@@ -7,14 +7,17 @@ export function claveDeTema(json) {
   return normalizarEtiqueta(e ?? '');
 }
 
-// Lemario con el que se juega una partida. Con las temáticas juntas, el general con todas.
-// Por separado (por defecto): sin etiqueta (General o Supervivencia) solo el general; con una
-// etiqueta, el general más las palabras de esa etiqueta.
-export function lemarioDePartida({ general, completo, etiqueta = '', separadas = true }) {
-  if (!separadas) return completo;
+// Lemario con el que se juega una partida, según carga (cargaTematicas de los ajustes):
+// - 'juntas': el general con todas las temáticas, en cualquier partida.
+// - 'separadas' (por defecto): sin etiqueta (General o Supervivencia) solo el general; con una
+//   etiqueta, el general más las palabras de esa etiqueta.
+// - 'exclusiva': sin etiqueta solo el general; con una etiqueta, solo las palabras de esa etiqueta.
+export function lemarioDePartida({ general, completo, etiqueta = '', carga = 'separadas' }) {
+  if (carga === 'juntas') return completo;
   const e = etiqueta ? normalizarEtiqueta(etiqueta) : '';
   if (e === '') return general;
-  return lemarioConEtiqueta(general, e, completo.palabrasDeEtiqueta(e));
+  const base = carga === 'exclusiva' ? { palabras: [] } : general;
+  return lemarioConEtiqueta(base, e, completo.palabrasDeEtiqueta(e));
 }
 
 const TIPOS_EVENTO = ['eliminar', 'congelar', 'ocultar'];

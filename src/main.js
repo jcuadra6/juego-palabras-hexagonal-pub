@@ -67,7 +67,7 @@ const estado = { lemario: null, temas: {}, partida: null, camino: [], ocupado: f
   temasIncluidos: {}, // los de data/temas; estado.temas les suma los estilos propios
   lemarioGeneral: null, // solo el general (propio o por defecto)
   lemarioCompleto: null, // el general con todos los lemarios de temáticas
-  lemariosPorEtiqueta: new Map(), // caché de lemarios de temáticas separadas
+  lemariosPorEtiqueta: new Map(), // caché de lemarios por modo de carga y etiqueta
   pista: null, // { palabra, camino } marcada por «Pedir ayuda»
   ayuda: { panel: false, develop: false, palabras: [], truncado: false, seleccionada: null },
 };
@@ -266,6 +266,12 @@ function alSoltar() {
   if (arrastre && arrastre.movido && estado.camino.length > 1) enviar().catch((e) => mostrarMensaje(`Error: ${e.message}`, 'derrota'));
 }
 
+const MENSAJES_CARGA = {
+  separadas: 'Cada temática por separado: sus palabras solo valen en su temática, junto con las del general.',
+  exclusiva: 'Solo la temática: en una temática solo valen sus palabras (General sigue usando el general).',
+  juntas: 'Todas juntas: las palabras de todas las temáticas valen en cualquier partida.',
+};
+
 // «1 palabra», «84.520 palabras».
 const contarPalabras = (n) => `${n.toLocaleString('es-ES')} ${n === 1 ? 'palabra' : 'palabras'}`;
 
@@ -301,11 +307,11 @@ async function nuevaPartida() {
 
 // Lemario de una partida con esa etiqueta ('' = General o Supervivencia), según el modo de carga.
 function lemarioActivo(etiqueta) {
-  const separadas = estado.ajustes.cargaTematicas === 'separadas';
-  const clave = separadas ? etiqueta : '*';
+  const carga = estado.ajustes.cargaTematicas;
+  const clave = carga === 'juntas' ? '*' : `${carga}:${etiqueta}`;
   if (!estado.lemariosPorEtiqueta.has(clave)) {
     estado.lemariosPorEtiqueta.set(clave, lemarioDePartida({
-      general: estado.lemarioGeneral, completo: estado.lemarioCompleto, etiqueta, separadas,
+      general: estado.lemarioGeneral, completo: estado.lemarioCompleto, etiqueta, carga,
     }));
   }
   return estado.lemariosPorEtiqueta.get(clave);
@@ -548,9 +554,7 @@ function conectarAjustes() {
       estado.ajustes = { ...estado.ajustes, cargaTematicas: radio.value };
       guardarAjustesActuales();
       await nuevaPartida();
-      mensajeAjustes(radio.value === 'juntas'
-        ? 'Todas las temáticas juntas: sus palabras valen en cualquier partida. Partida nueva empezada.'
-        : 'Cada temática por separado: sus palabras solo valen en su temática. Partida nueva empezada.');
+      mensajeAjustes(`${MENSAJES_CARGA[radio.value]} Partida nueva empezada.`);
     });
   }
   el.tematicasQuitar.addEventListener('click', alQuitarTematicas);
