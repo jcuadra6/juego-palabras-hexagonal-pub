@@ -98,8 +98,19 @@ test('lemarioDePartida: por separado, General solo usa el general y cada etiquet
 test('lemarioDePartida: juntas usa siempre el lemario completo', () => {
   const general = cargarLemario('sol');
   const completo = cargarLemario('sol\ncalabaza;halloween');
-  assert.equal(lemarioDePartida({ general, completo, etiqueta: '', separadas: false }), completo);
-  assert.equal(lemarioDePartida({ general, completo, etiqueta: 'halloween', separadas: false }), completo);
+  assert.equal(lemarioDePartida({ general, completo, etiqueta: '', carga: 'juntas' }), completo);
+  assert.equal(lemarioDePartida({ general, completo, etiqueta: 'halloween', carga: 'juntas' }), completo);
+});
+
+test('lemarioDePartida: exclusiva usa solo las palabras de la etiqueta, y General el general', () => {
+  const general = cargarLemario('sol\nmar');
+  const completo = cargarLemario('sol\nmar\ncalabaza;halloween\nbruja;halloween\nturron;navidad');
+  const enHalloween = lemarioDePartida({ general, completo, etiqueta: 'halloween', carga: 'exclusiva' });
+  assert.deepEqual([...enHalloween.palabras].sort(), ['bruja', 'calabaza']);
+  assert.equal(enHalloween.existe('sol'), false);
+  assert.equal(enHalloween.existe('turron'), false);
+  assert.deepEqual(enHalloween.palabrasDeEtiqueta('halloween'), ['calabaza', 'bruja']);
+  assert.equal(lemarioDePartida({ general, completo, etiqueta: '', carga: 'exclusiva' }), general);
 });
 
 test('lemarioConEtiqueta con una etiqueta sin palabras devuelve el general con la etiqueta vacía', () => {
