@@ -1,6 +1,6 @@
 // Service worker: guarda el juego para que funcione sin conexión.
 // Estrategia: primero la red (así se ven los cambios al momento) y, si falla, la copia guardada.
-const CACHE = 'palabras-v2';
+const CACHE = 'palabras-v3';
 const ARCHIVOS = [
   './',
   'index.html',

@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cargarLemario, normalizar } from '../src/lemario.js';
+import { cargarLemario, lemarioConEtiqueta, normalizar } from '../src/lemario.js';
 import {
   avisosLemario, cargarTema, crearMision, actualizarMision, misionCumplida, nombreTematica, temaDeTematica,
+  claveDeTema, lemarioDePartida,
 } from '../src/modos.js';
 
 const leer = (ruta) => readFileSync(new URL(ruta, import.meta.url), 'utf8');
@@ -76,6 +77,59 @@ test('reto tema: en General cuenta cualquier palabra distinta; con temática, so
   };
   assert.equal(progresoTema(temaDeTematica(temas, l, ''), ['sol', 'sol', 'mar']), 2);
   assert.equal(progresoTema(temaDeTematica(temas, l, 'halloween'), ['sol', 'mar', 'calabaza']), 1);
+});
+
+test('lemarioDePartida: por separado, General solo usa el general y cada etiqueta suma solo sus palabras', () => {
+  const general = cargarLemario('sol\nmar');
+  const completo = cargarLemario('sol\nmar\ncalabaza;halloween\nbruja;halloween\nturron;navidad\nmar;navidad');
+  const enGeneral = lemarioDePartida({ general, completo, etiqueta: '' });
+  assert.equal(enGeneral, general);
+  assert.equal(enGeneral.existe('calabaza'), false);
+  const enHalloween = lemarioDePartida({ general, completo, etiqueta: 'Halloween' });
+  assert.equal(enHalloween.existe('calabaza'), true);
+  assert.equal(enHalloween.existe('sol'), true);
+  assert.equal(enHalloween.existe('turron'), false);
+  assert.deepEqual(enHalloween.listaEtiquetas, ['halloween']);
+  assert.deepEqual(enHalloween.palabrasDeEtiqueta('halloween'), ['calabaza', 'bruja']);
+  const enNavidad = lemarioDePartida({ general, completo, etiqueta: 'navidad' });
+  assert.equal(enNavidad.tamano, 3); // «mar» ya estaba en el general: no se repite
+});
+
+test('lemarioDePartida: juntas usa siempre el lemario completo', () => {
+  const general = cargarLemario('sol');
+  const completo = cargarLemario('sol\ncalabaza;halloween');
+  assert.equal(lemarioDePartida({ general, completo, etiqueta: '', separadas: false }), completo);
+  assert.equal(lemarioDePartida({ general, completo, etiqueta: 'halloween', separadas: false }), completo);
+});
+
+test('lemarioConEtiqueta con una etiqueta sin palabras devuelve el general con la etiqueta vacía', () => {
+  const l = lemarioConEtiqueta(cargarLemario('sol\nmar'), 'Verano', []);
+  assert.equal(l.tamano, 2);
+  assert.deepEqual(l.palabrasDeEtiqueta('verano'), []);
+});
+
+test('claveDeTema usa «etiqueta» si la hay y si no el nombre, normalizados', () => {
+  assert.equal(claveDeTema({ nombre: 'Día de Muertos' }), 'dia de muertos');
+  assert.equal(claveDeTema({ nombre: 'Fiesta', etiqueta: ' Verano ' }), 'verano');
+  assert.equal(claveDeTema({ nombre: 'Fiesta', etiqueta: '' }), 'fiesta');
+  assert.equal(claveDeTema({}), '');
+  assert.equal(claveDeTema(null), '');
+});
+
+test('un estilo propio con su lemario aparece como temática con sus colores y palabras', () => {
+  const estilo = {
+    nombre: 'Verano',
+    paleta: { fondo: '#fff3d6', casilla: '#ffd166', texto: '#1b1b1b', acento: '#ef476f' },
+    eventos: [{ tipo: 'eliminar', alcance: { radio: 1 }, duracion: 0, modoCrecimiento: null }],
+    retos: [{ tipo: 'tema', meta: 2 }],
+  };
+  const conEstilo = { ...temas, [claveDeTema(estilo)]: cargarTema(estilo) };
+  const completo = cargarLemario('sol\nplaya;verano\nola;verano');
+  const lemario = lemarioDePartida({ general: cargarLemario('sol'), completo, etiqueta: 'verano' });
+  const tema = temaDeTematica(conEstilo, lemario, 'verano');
+  assert.equal(tema.nombre, 'Verano');
+  assert.deepEqual(tema.paleta, estilo.paleta);
+  assert.deepEqual(tema.palabrasObjetivo, ['playa', 'ola']);
 });
 
 test('cargarTema sin eventos lanza un error que nombra el campo', () => {

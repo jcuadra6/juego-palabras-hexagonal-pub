@@ -1,5 +1,21 @@
-// Temas y misiones: validación de temas cargados desde JSON y progreso de los retos.
-import { normalizar, normalizarEtiqueta } from './lemario.js';
+// Temas y misiones: validación de temas cargados desde JSON, temáticas y progreso de los retos.
+import { lemarioConEtiqueta, normalizar, normalizarEtiqueta } from './lemario.js';
+
+// Etiqueta a la que se aplica un tema (su estilo): el campo «etiqueta» o, si no hay, su nombre.
+export function claveDeTema(json) {
+  const e = typeof json?.etiqueta === 'string' && json.etiqueta.trim() !== '' ? json.etiqueta : json?.nombre;
+  return normalizarEtiqueta(e ?? '');
+}
+
+// Lemario con el que se juega una partida. Con las temáticas juntas, el general con todas.
+// Por separado (por defecto): sin etiqueta (General o Supervivencia) solo el general; con una
+// etiqueta, el general más las palabras de esa etiqueta.
+export function lemarioDePartida({ general, completo, etiqueta = '', separadas = true }) {
+  if (!separadas) return completo;
+  const e = etiqueta ? normalizarEtiqueta(etiqueta) : '';
+  if (e === '') return general;
+  return lemarioConEtiqueta(general, e, completo.palabrasDeEtiqueta(e));
+}
 
 const TIPOS_EVENTO = ['eliminar', 'congelar', 'ocultar'];
 const MODOS = ['rellenar', 'fuera', 'mixto', null];

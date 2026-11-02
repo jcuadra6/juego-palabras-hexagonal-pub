@@ -79,10 +79,15 @@
 
       <fieldset>
         <legend>Temáticas</legend>
-        <p class="nota">Un .txt con una palabra por línea y sus etiquetas tras «;», separadas por comas: <code>calabaza;halloween</code>. Esas palabras valen para los retos de su temática; el resto del lemario se puede jugar pero no cuenta para esos retos.</p>
+        <div class="opciones" role="radiogroup" aria-label="Cómo se usan los lemarios de temáticas">
+          <label class="interruptor"><input type="radio" name="carga-tematicas" value="separadas"> Cada temática por separado: sus palabras solo valen en su temática (General usa solo el lemario general)</label>
+          <label class="interruptor"><input type="radio" name="carga-tematicas" value="juntas"> Todas juntas: las palabras de todas las temáticas valen en cualquier partida</label>
+        </div>
         <ul id="tematicas-lista"></ul>
-        <label class="archivo">Cargar lemario de temáticas
-          <input type="file" id="tematicas-archivo" accept=".txt,text/plain" multiple>
+        <p class="nota"><strong>Lemario de temática (.txt):</strong> una palabra por línea y sus etiquetas tras «;», separadas por comas: <code>calabaza;halloween</code>. Esas palabras cuentan para los retos de su temática; el resto del lemario se puede jugar pero no cuenta para esos retos.</p>
+        <p class="nota"><strong>Estilo de temática (.json, opcional):</strong> colores, eventos y retos, como los de <code>data/temas/</code>, con <code>"etiqueta"</code> o un <code>"nombre"</code> igual a la etiqueta. Sin estilo, la temática usa el general.</p>
+        <label class="archivo">Cargar temática (lemario .txt y, si quieres, su estilo .json; puedes elegir los dos a la vez)
+          <input type="file" id="tematicas-archivo" accept=".txt,.json,text/plain,application/json" multiple>
         </label>
         <button type="button" id="tematicas-quitar">Quitar las temáticas que he cargado</button>
       </fieldset>

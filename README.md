@@ -68,18 +68,33 @@ Para usar otro lemario, cárgalo en **Ajustes → Lemario** (un `.txt` con una p
 En el modo Misiones, el selector **Temática** ofrece «General» (por defecto) y una opción por cada etiqueta de los lemarios de temáticas.
 
 - **Formato:** un `.txt` con una palabra por línea y, tras un `;`, sus etiquetas separadas por comas: `calabaza;halloween,otoño`. Una palabra sin etiquetas es general. Las etiquetas no distinguen mayúsculas ni tildes.
-- Las palabras de los lemarios de temáticas se añaden al lemario aunque no estén en él.
 - **General:** cualquier palabra válida cuenta para el reto «palabras del tema».
-- **Con una etiqueta** (por ejemplo Halloween): se pueden jugar todas las palabras del lemario, pero solo las que llevan esa etiqueta cuentan para el reto de palabras del tema.
-- Si la etiqueta coincide con un tema de `data/temas/` (`halloween`, `navidad`), se usan sus colores, eventos y retos. Si no, los de `data/temas/general.json` con el nombre de la etiqueta.
-- El juego incluye `data/tematicas/halloween.txt` y `data/tematicas/navidad.txt`. Puedes cargar más en **Ajustes → Temáticas**; se recuerdan en el dispositivo y «Quitar las temáticas que he cargado» las borra (las incluidas se quedan). Un archivo con el mismo nombre sustituye al cargado antes.
+- **Con una etiqueta** (por ejemplo Halloween): se pueden jugar todas las palabras del lemario general y las de esa etiqueta, pero solo las de la etiqueta cuentan para el reto de palabras del tema.
+
+### Cómo se cargan (Ajustes → Temáticas)
+
+- **Cada temática por separado** (por defecto): en General y en Supervivencia solo vale el lemario general. Con una etiqueta vale el general más las palabras de esa etiqueta; las de otras temáticas no valen (en Halloween, «nochebuena» no se acepta).
+- **Todas juntas:** el general y todos los lemarios de temáticas se unen y sus palabras valen en cualquier partida. Los retos de tema siguen contando solo las palabras de la etiqueta elegida.
+
+La elección se recuerda y al cambiarla se empieza una partida nueva (`cargaTematicas` en `src/ajustes.js`; `lemarioDePartida` en `src/modos.js`).
+
+### Estilos de temática
+
+- Un estilo es un `.json` como los de `data/temas/`: `nombre`, `paleta`, `eventos` y `retos`, y opcionalmente `etiqueta`. Se aplica a la etiqueta `etiqueta` o, si no la tiene, a la que coincide con su `nombre` (sin mayúsculas ni tildes).
+- Si la etiqueta tiene estilo (incluido en `data/temas/` o cargado), se usan sus colores, eventos y retos. Si no, los de `data/temas/general.json` con el nombre de la etiqueta.
+- Una temática aparece en el desplegable en cuanto hay un lemario con su etiqueta. Al cargar en **Ajustes → Temáticas** un lemario `.txt` y su estilo `.json` (a la vez o por separado), la temática aparece sola con sus colores. Un estilo sin lemario se guarda y la lista avisa de que falta el lemario.
+
+### Archivos
+
+- El juego incluye `data/tematicas/halloween.txt` y `data/tematicas/navidad.txt`, con sus estilos `data/temas/halloween.json` y `data/temas/navidad.json`.
+- Lo que cargues se recuerda en el dispositivo y «Quitar las temáticas que he cargado» lo borra (las incluidas se quedan). Un lemario con el mismo nombre de archivo, o un estilo de la misma etiqueta, sustituye al cargado antes; un estilo propio sustituye también al incluido.
 
 ## Ajustes
 
 El botón **⚙ Ajustes** abre una pantalla (a pantalla completa en el móvil) con:
 
 - **Lemario:** cuál se usa, cargar uno propio o volver al de por defecto.
-- **Temáticas:** las etiquetas disponibles con su número de palabras, cargar lemarios de temáticas y quitar los cargados.
+- **Temáticas:** cómo se cargan (por separado o juntas), las etiquetas disponibles con su número de palabras y su estilo, cargar lemarios y estilos de temáticas y quitar los cargados.
 - **Ayuda:** «Mostrar lista de palabras posibles» (el panel de ayuda).
 - **Opciones de desarrollador:** el modo develop y los parámetros de `GENERADOR` y `AYUDA` (ver tablas). Se normalizan como en `src/config.js` y se aplican en la próxima partida. «Restaurar valores por defecto» los devuelve a los de `src/config.js`.
 

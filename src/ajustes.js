@@ -10,6 +10,8 @@ export function normalizarAjustes(ajustes) {
   return {
     modo: a.modo === 'misiones' ? 'misiones' : 'supervivencia',
     tematica: typeof a.tematica === 'string' ? a.tematica : '', // '' = General
+    // 'separadas': cada lemario temático solo se usa en su temática; 'juntas': todos a la vez.
+    cargaTematicas: a.cargaTematicas === 'juntas' ? 'juntas' : 'separadas',
     mostrarLista: a.mostrarLista === true,
     develop: a.develop === true,
     generador: normalizarConfig(a.generador),

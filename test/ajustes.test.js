@@ -18,9 +18,15 @@ function almacenFalso(inicial = {}) {
 
 test('normalizarAjustes() da los valores por defecto', () => {
   assert.deepStrictEqual(normalizarAjustes(), {
-    modo: 'supervivencia', tematica: '', mostrarLista: false, develop: false,
+    modo: 'supervivencia', tematica: '', cargaTematicas: 'separadas', mostrarLista: false, develop: false,
     generador: GENERADOR, ayuda: AYUDA,
   });
+});
+
+test('cargaTematicas solo admite separadas (por defecto) o juntas', () => {
+  assert.equal(normalizarAjustes({ cargaTematicas: 'juntas' }).cargaTematicas, 'juntas');
+  assert.equal(normalizarAjustes({ cargaTematicas: 'otra' }).cargaTematicas, 'separadas');
+  assert.equal(conRuta(normalizarAjustes(), 'cargaTematicas', 'juntas').cargaTematicas, 'juntas');
 });
 
 test('normalizarAjustes corrige tipos y rangos erróneos', () => {
