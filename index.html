@@ -62,10 +62,10 @@
   </aside>
   </div>
   <dialog id="ajustes" aria-labelledby="ajustes-titulo">
-    <form method="dialog" class="ajustes">
+    <form method="dialog" class="ajustes" novalidate>
       <header class="cabecera">
         <h2 id="ajustes-titulo">Ajustes</h2>
-        <button type="submit" aria-label="Cerrar ajustes">✕</button>
+        <button type="button" id="cerrar-ajustes" aria-label="Cerrar ajustes">✕</button>
       </header>
 
       <fieldset>
@@ -110,9 +110,9 @@
           <label>Longitud garantizada <input type="number" data-ruta="generador.longitudGarantizada" min="3" max="12" step="1"></label>
           <label>Prioridad de encaje (0 a 1) <input type="number" data-ruta="generador.prioridadEncaje" min="0" max="1" step="0.05"></label>
           <label>Mezcla de pesos (0 a 1) <input type="number" data-ruta="generador.mezclaPesos" min="0" max="1" step="0.05"></label>
-          <label>Presupuesto de intentos <input type="number" data-ruta="generador.presupuestoIntentos" min="1" step="100"></label>
-          <label>Máximo de palabras en la lista <input type="number" data-ruta="ayuda.maxPalabras" min="1" step="10"></label>
-          <label>Máximo de nodos del escáner <input type="number" data-ruta="ayuda.maxNodos" min="1" step="10000"></label>
+          <label>Presupuesto de intentos <input type="number" data-ruta="generador.presupuestoIntentos" min="1" step="1"></label>
+          <label>Máximo de palabras en la lista <input type="number" data-ruta="ayuda.maxPalabras" min="1" step="1"></label>
+          <label>Máximo de nodos del escáner <input type="number" data-ruta="ayuda.maxNodos" min="1" step="1"></label>
         </div>
         <button type="button" id="parametros-defecto">Restaurar valores por defecto</button>
       </details>
