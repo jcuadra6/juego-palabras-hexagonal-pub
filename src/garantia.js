@@ -3,8 +3,43 @@ import { clave } from './hex.js';
 import { LONGITUD_MINIMA, normalizarConfig } from './config.js';
 import { hayPalabraPosible, garantizarPalabraPosible } from './tablero.js';
 import { buscarColocaciones } from './colocacion.js';
+import { cargarLemario } from './lemario.js';
 
 const LIMITE_COLOCACIONES = 200;
+
+// Lemario con las palabras de la temática que aún no se han jugado (vacío si no queda ninguna).
+export function lemarioTematico(palabras, excluir = new Set()) {
+  return cargarLemario((palabras ?? []).filter((p) => !excluir.has(p)).join('\n'));
+}
+
+// Garantía de temática: que en las casillas libres se pueda formar al menos una palabra de la
+// temática sin usar. Si no, la coloca cambiando el mínimo de letras (y, a igualdad, usando las
+// casillas de "preferir"). Devuelve true si al final hay una.
+export function asegurarPalabraTematica(tablero, palabras, rng, opciones = {}) {
+  const lemario = lemarioTematico(palabras, opciones.excluir);
+  if (lemario.tamano === 0) return false;
+  if (hayPalabraPosible(tablero, lemario)) return true;
+  const preferir = new Set(opciones.preferir ?? []);
+  const rejilla = new Map();
+  for (const c of tablero.casillas.values()) {
+    if (c.congeladaHasta > tablero.turno) continue;
+    rejilla.set(clave(c.q, c.r), { q: c.q, r: c.r, letra: c.letra, fija: false });
+  }
+  const max = Math.min(lemario.longitudMaxima, rejilla.size);
+  if (max < LONGITUD_MINIMA) return false;
+  const colocaciones = buscarColocaciones(rejilla, lemario, {
+    min: LONGITUD_MINIMA, max, limite: LIMITE_COLOCACIONES, rng,
+  });
+  if (colocaciones.length === 0) return false;
+  const usadas = (col) => col.camino.filter((p) => preferir.has(clave(p.q, p.r))).length;
+  const menor = Math.min(...colocaciones.map((c) => c.cambios));
+  const baratas = colocaciones.filter((c) => c.cambios === menor);
+  const mas = Math.max(...baratas.map(usadas));
+  const empatadas = baratas.filter((c) => usadas(c) === mas);
+  const elegida = empatadas[Math.floor(rng() * empatadas.length)];
+  elegida.camino.forEach((p, i) => { tablero.casilla(p.q, p.r).letra = elegida.palabra[i]; });
+  return true;
+}
 
 export function asegurarPalabraLarga(tablero, lemario, config, rng, opciones = {}) {
   const cfg = normalizarConfig(config);

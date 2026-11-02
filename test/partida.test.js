@@ -12,6 +12,7 @@ import { modoActivo, EVENTOS_BASE } from '../src/eventos.js';
 import { cargarTema } from '../src/modos.js';
 import { readFileSync } from 'node:fs';
 import { crearPartida, jugarPalabra } from '../src/partida.js';
+import { escanearPalabras } from '../src/escaner.js';
 
 const base = cargarLemario('casa\nsol\nsal\nmal\nluz\nzzz\n');
 // Lemario con letra aleatoria fija ('z'), distinta de las letras del tablero de prueba.
@@ -386,7 +387,7 @@ test('crearPartida siembra con el generador una sola vez y guarda generador y co
   const config = { ...GENERADOR, radioInicial: 1 };
   const p = crearPartida({ modo: 'supervivencia', lemario, ia, rng, generador: g, config });
   assert.equal(llamadas.sembrar.length, 1);
-  assert.deepEqual(llamadas.sembrar[0], [lemario, config, rng]);
+  assert.deepEqual(llamadas.sembrar[0], [lemario, config, rng, { tematicas: [] }]);
   assert.equal(p.generador, g);
   assert.equal(p.config, config);
   assert.equal(p.tablero.casilla(0, 0).letra, 's');
@@ -432,7 +433,40 @@ test('misiones: al reiniciar el tablero se vuelve a sembrar con el generador', a
   const res = await jugarPalabra(p, CAM3);
   assert.equal(res.tableroReiniciado, true);
   assert.equal(llamadas.sembrar.length, 2);
-  assert.deepEqual(llamadas.sembrar[1], [lemario, p.config, rng]);
+  // La temática se vuelve a sembrar al reiniciar.
+  assert.deepEqual(llamadas.sembrar[1], [lemario, p.config, rng, { tematicas: ['luz'] }]);
+});
+
+test('misiones con temática: el tablero inicial y cada jugada ofrecen una palabra de la temática', async () => {
+  const lem = cargarLemario(readFileSync(new URL('../data/lemario-muestra.txt', import.meta.url), 'utf8'));
+  const tematicas = ['calabaza', 'fantasma', 'murcielago', 'vampiro', 'esqueleto'];
+  const temaHalloween = { nombre: 'Halloween', paleta: {}, eventos: [], palabrasObjetivo: tematicas, retos: [{ tipo: 'tema', meta: 99 }] };
+  for (let semilla = 1; semilla <= 5; semilla++) {
+    const r = crearRng(semilla);
+    const p = crearPartida({
+      modo: 'misiones', tema: temaHalloween, lemario: lem, ia: crearIaSimulada({ lemario: lem, rng: r }), rng: r,
+      eventoCada: 0,
+    });
+    assert.deepEqual(p.tematicas, tematicas);
+    const enTablero = () => escanearPalabras(p.tablero, lem, { maxPalabras: 1000, excluir: p.palabrasUsadas })
+      .palabras.filter((x) => tematicas.includes(x.palabra));
+    assert.ok(enTablero().length >= 1, `semilla ${semilla}: sin palabra de la temática al empezar`);
+    // Jugar las palabras de la temática una a una: tras cada jugada sigue habiendo otra.
+    for (let jugada = 0; jugada < 3; jugada++) {
+      const [x] = enTablero();
+      assert.ok(x, `semilla ${semilla}, jugada ${jugada}: no queda palabra de la temática`);
+      const res = await jugarPalabra(p, x.camino);
+      assert.equal(res.aceptada, true);
+    }
+    assert.ok(enTablero().length >= 1, `semilla ${semilla}: sin palabra de la temática al final`);
+  }
+});
+
+test('supervivencia y misiones en General no siembran temática', () => {
+  const p = crearPartida({ modo: 'supervivencia', tema: tema([{ tipo: 'longitud', meta: 9 }]), lemario, ia, rng });
+  assert.deepEqual(p.tematicas, []);
+  const general = { ...tema([{ tipo: 'longitud', meta: 9 }]), palabrasObjetivo: null };
+  assert.deepEqual(crearPartida({ modo: 'misiones', tema: general, lemario, ia, rng }).tematicas, []);
 });
 
 test('generador local real: supervivencia con radio 3 mantiene siempre una palabra de 5 letras', async () => {

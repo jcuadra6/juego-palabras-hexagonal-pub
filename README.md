@@ -70,6 +70,7 @@ En el modo Misiones, el selector **Temática** ofrece «General» (por defecto) 
 - **Formato:** un `.txt` con una palabra por línea y, tras un `;`, sus etiquetas separadas por comas: `calabaza;halloween,otoño`. Una palabra sin etiquetas es general. Las etiquetas no distinguen mayúsculas ni tildes.
 - **General:** cualquier palabra válida cuenta para el reto «palabras del tema».
 - **Con una etiqueta** (por ejemplo Halloween): se pueden jugar todas las palabras del lemario general y las de esa etiqueta, pero solo las de la etiqueta cuentan para el reto de palabras del tema.
+- **El tablero usa el lemario de la temática:** al empezar (y al reiniciar el tablero) se siembran primero hasta `PALABRAS_TEMATICAS_SEMBRADAS` (2) palabras de la etiqueta, y la trama del lemario general las cruza. Tras cada jugada, `asegurarPalabraTematica` (`src/garantia.js`) comprueba que se pueda formar al menos una palabra de la temática sin usar en las casillas libres. Si no la hay, la coloca cambiando el mínimo de letras. Se hace después de la garantía de palabra larga, así que en algún caso puede quitar la palabra larga. En General y en Supervivencia no se siembra temática.
 
 ### Cómo se cargan (Ajustes → Temáticas)
 

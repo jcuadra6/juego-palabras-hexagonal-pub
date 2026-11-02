@@ -26,16 +26,21 @@ export function crearPartida({
   modo, tema = null, lemario, ia, rng, eventoCada = EVENTO_CADA_PALABRAS,
   generador = generadorLocal, config = GENERADOR,
 }) {
+  // Palabras de la temática elegida: se siembran en el tablero y siempre queda alguna sin usar.
+  const tematicas = modo === 'misiones' && tema?.palabrasObjetivo
+    ? [...new Set(tema.palabrasObjetivo.map(normalizar))]
+    : [];
   const partida = {
     modo,
     tema,
+    tematicas,
     lemario,
     ia,
     rng,
     eventoCada,
     generador,
     config,
-    tablero: generador.sembrarTablero(lemario, config, rng),
+    tablero: generador.sembrarTablero(lemario, config, rng, { tematicas }),
     puntos: 0,
     palabrasUsadas: new Set(),
     eventosActivos: [],
@@ -75,7 +80,9 @@ function registrarEvento(partida, evento) {
 
 function reiniciarTablero(partida) {
   const turno = partida.tablero.turno;
-  partida.tablero = partida.generador.sembrarTablero(partida.lemario, partida.config, partida.rng);
+  partida.tablero = partida.generador.sembrarTablero(
+    partida.lemario, partida.config, partida.rng, { tematicas: partida.tematicas },
+  );
   partida.tablero.turno = turno;
   partida.eventosActivos = [];
 }
@@ -120,6 +127,11 @@ async function jugar(partida, camino) {
   generador.asegurarPalabraLarga(tablero, lemario, config, rng, {
     preferir, excluir: partida.palabrasUsadas,
   });
+  if (partida.tematicas.length > 0 && generador.asegurarPalabraTematica) {
+    generador.asegurarPalabraTematica(tablero, partida.tematicas, rng, {
+      preferir, excluir: partida.palabrasUsadas,
+    });
+  }
   tablero.turno += 1;
   partida.eventosActivos = partida.eventosActivos.filter((e) => e.hastaTurno > tablero.turno);
 
